@@ -1,30 +1,10 @@
+var actors = [];
+
 var engine = {
   canvas: null,
   ctx: null,
-  clear: function() {
+  clear: function(){
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-}
-
-var player = {
-  sprite: null,
-  pos: null,
-  radius: null,
-  dest: null,
-  speed: 4,
-  vector: [0,0],
-  init: function(x, y, radius) {
-    this.pos = [x, y];
-    this.radius = radius;
-    this.dest = [x, y];
-    engine.ctx.beginPath();
-    engine.ctx.arc(x,y,radius,0,2*Math.PI);
-    engine.ctx.stroke();
-  },
-  redraw: function(){
-    engine.ctx.beginPath();
-    engine.ctx.arc(this.pos[0], this.pos[1], this.radius, 0, 2*Math.PI);
-    engine.ctx.stroke();
   }
 }
 
@@ -38,11 +18,12 @@ function startEngine(){
   engine.canvas.width = engine.canvas.height * (engine.canvas.clientWidth / engine.canvas.clientHeight);
   engine.ctx = engine.canvas.getContext("2d");
   
-  p1 =  player.init(50, 50, 50);
+  var factory = new ActorFactory();
+  actors.push( factory.createActor("player", [50, 50], 50) );
+  actors.push( factory.createActor("player", [150, 150], 50) );
 
   var mainloop = function() {
       updateGame();
-      //drawGame();
   };
   var animFrame = window.requestAnimationFrame ||
           window.webkitRequestAnimationFrame ||
@@ -76,17 +57,23 @@ function rightclick(event) {
 }
 
 function updateGame() {
-  if(getDistance(player.pos, player.dest) > 4 ){
-    player.pos[0] += player.vector[0] * player.speed;
-    player.pos[1] += player.vector[1] * player.speed;
+  var needsRedraw = false;
+  for (var i = 0; i < actors.length; i++){
+    if ( actors[i].update() == true ) {
+        needsRedraw = true;
+    }
+  }
+  if(needsRedraw == true){
     drawGame();
   } else {
-    //console.log("no movement");
+    //console.log("no draw necessary");
   }
-
 }
 
 function drawGame() {
   engine.clear();
-  player.redraw();
+
+  for (var i = 0; i < actors.length; i++){
+    actors[i].redraw();
+  }
 }

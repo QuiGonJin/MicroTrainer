@@ -9,6 +9,8 @@ function getElemPosition(elem){
 }
 
 function handleRightClick(e){
+    var player = actors[0];
+
     var xPosition = e.clientX;
     var yPosition = e.clientY;
     var destPos = [xPosition, yPosition];
@@ -16,7 +18,9 @@ function handleRightClick(e){
     
     player.dest = destPos;
     player.vector = getUnitVector(player.pos, player.dest); 
-    logTuple("vector", player.vector);   
+    //logTuple("vector", player.vector);   
+
+    player.status();
 }
 
 function getUnitVector(curPos, destPos){
