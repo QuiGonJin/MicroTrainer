@@ -17,7 +17,7 @@ function handleRightClick(e){
     
     player.dest = destPos;
     player.vector = getUnitVector(player.pos, player.dest); 
-    //translate(player.sprite, destPos);    
+    logTuple("vector", player.vector);   
 }
 
 function getUnitVector(curPos, destPos){
