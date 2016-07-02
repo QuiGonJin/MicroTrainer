@@ -5,6 +5,7 @@ var engine = {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }
+
 var player = {
   sprite: null,
   pos: null,

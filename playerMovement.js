@@ -8,7 +8,6 @@ function getElemPosition(elem){
              elem.offsetTop];
 }
 
-
 function handleRightClick(e){
     var xPosition = e.clientX;
     var yPosition = e.clientY;
