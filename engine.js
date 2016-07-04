@@ -1,20 +1,18 @@
 var container;
 var mConsole;
 
-
 /**
  * Holds state and functions related to game canvas
  */
 var engine = {
   //Placeholder variables for engine prototype. Initialized once game loads
   canvas: null,
-//  container: null,
-//  console: null,
   ctx: null,
   lastTime: null,
   
   actorFactory: null,
   actors: [],
+  hovered: null,
   clear: function(){
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
@@ -40,9 +38,18 @@ function init(){
     function (event) {
       engine.mousePos = [event.clientX, event.clientY];
 
-      mConsole.textContent =
-      "[" + event.clientX +
-      ", " + event.clientY + "]";
+      for (var i = 0; i < engine.actors.length; i++){
+        if( isInRadius(engine.actors[i].pos, engine.actors[i].radius, engine.mousePos) ){
+          mConsole.textContent = "Is on Actor: " + i;
+          engine.hovered = engine.actors[i];
+          document.body.style.cursor = "crosshair";
+          break;
+        } else {
+          document.body.style.cursor = "auto"; 
+          engine.hovered = null;
+          mConsole.textContent = "";
+        }
+      }
     }
   )
 
@@ -50,7 +57,8 @@ function init(){
   container.addEventListener("contextmenu", 
     function (e) {
       e.preventDefault();
-      playerMove(event);
+      
+      playerMove([event.clientX, event.clientY]);
     } 
   )
   
@@ -66,6 +74,9 @@ function init(){
   window.addEventListener('keyup', 
     function (e) {
       engine.keys[e.keyCode] = false;
+      if (e.keyCode == 65){
+        playerAttack();
+      }
     }
   )
 
@@ -77,7 +88,8 @@ function init(){
   engine.ctx = engine.canvas.getContext("2d");
   engine.actorFactory = new ActorFactory();
   engine.actors.push( engine.actorFactory.createActor("player", [50, 50], 35, 'art/vayne.png') );
-  engine.actors.push( engine.actorFactory.createActor("dummy", [150, 150], 50, 'art/dummy.png') );
+  engine.actors.push( engine.actorFactory.createActor("dummy", [150, 150], 35, 'art/duffmmy.png') );
+  engine.actors.push( engine.actorFactory.createActor("dummy", [350, 350], 35, 'art/dummy.png') );
 
 
   //-----------------START GAME LOOP------------------//
@@ -124,7 +136,7 @@ function updateGame(dt) {
   //---------------------UPDATE KEYSTROKES-------------//
   // a
   if (engine.keys && engine.keys[65]) { 
-    playerAttack();
+    //playerAttack();
   }
   
   // s

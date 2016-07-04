@@ -1,23 +1,39 @@
-function playerMove(e){
-    var player = engine.actors[0];
+function playerMove(dest){
+    oneMoreTick = true;
 
-    var xPosition = e.clientX;
-    var yPosition = e.clientY;
+    var player = engine.actors[0];
+    var xPosition = dest[0];
+    var yPosition = dest[1];
     var destPos = [xPosition, yPosition];
     logTuple("destPos", destPos);
     
     player.dest = destPos;
     player.vector = getUnitVector(player.pos, player.dest); 
 
-    mConsole.textContent = "playerMove(e) : " +
+    mConsole.textContent = "playerMove(dest) : " +
     "[" + event.clientX +
     ", " + event.clientY + "]";
 }
 
 function playerAttack(){
+    oneMoreTick = true;
+    
+    var player = engine.actors[0];
+
+    if (engine.hovered != null){
+        if (isInRadius(player.pos, 400, engine.hovered.pos)){
+            playerStop();
+            console.log("hit");
+            player.vector = getUnitVector(player.pos, engine.hovered.pos);
+        } else {
+            console.log("out of range");
+        }
+    } else {
+        console.log("what nigga");
+    }
     mConsole.textContent = "Attack(e) : " +
     "[" + engine.mousePos[0] +
-    ", " + engine.mousePos[1] + "]";
+    ", " + engine.mousePos[1] + "]";   
 }
 
 function playerStop(){
@@ -27,6 +43,16 @@ function playerStop(){
     player.vector = player.facing;
 
     mConsole.textContent = "playerStop()";
+}
+
+function isInRadius(center, radius, point) {
+    var mouseX = point[0];
+    var mouseY = point[1];
+    if ( ( Math.pow((mouseX - center[0]), 2)     + 
+           Math.pow((mouseY - center[1]), 2) )   <
+           Math.pow(radius, 2) ){
+        return true;
+    } else return false;
 }
 
 
@@ -66,7 +92,6 @@ function getDistance(curPos, destPos){
 
 function logTuple(description, e){
     console.log(description + "--> X: "+ e[0] + ", Y: " + e[1]);
-    
 }
 
 function getElemPosition(elem){

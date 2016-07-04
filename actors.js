@@ -1,4 +1,6 @@
 
+var oneMoreTick = true; //hack solution to needing 1 more redraw 
+
 function ActorProto (type, pos, radius, spriteUrl) {
     this.type = type;
     this.pos = pos;
@@ -17,7 +19,7 @@ function ActorProto (type, pos, radius, spriteUrl) {
         var x = Math.round(this.pos[0]); //round pos to avoid sub-pixel rendering
         var y = Math.round(this.pos[1]);
 
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 15;
         ctx.save();
         ctx.beginPath();
         ctx.arc(x, y, this.radius, 0, 2*Math.PI);
@@ -25,8 +27,10 @@ function ActorProto (type, pos, radius, spriteUrl) {
         ctx.stroke();
         ctx.closePath();
         ctx.clip();
-
-        ctx.drawImage(this.sprite, x - radius, y - radius, this.radius*2, this.radius*2);
+        if(this.sprite){
+            ctx.drawImage(this.sprite, x - radius, y - radius, this.radius*2, this.radius*2);
+        }
+        //ctx.drawImage(this.sprite, x - radius, y - radius, this.radius*2, this.radius*2);
         ctx.restore();
     }
 }
@@ -41,8 +45,8 @@ function PlayerActor(type, pos, radius, spriteUrl, speed) {
     this.update = function(dt){
         var ret = false;
 
+        //Update position
         getUnitVector(this.pos, this.dest);
-
         var heading = this.pos[0] - this.dest[0];
         if(heading * this.vector[0] < 0){
             this.pos[0] += this.vector[0] * this.speed * dt;
@@ -53,6 +57,7 @@ function PlayerActor(type, pos, radius, spriteUrl, speed) {
             this.pos = this.dest;
         }
 
+        //Update direction
         var theta = getTheta(this.facing, this.vector)
         var omega = 0.3;
         if( Math.abs(theta) > omega){
@@ -65,6 +70,10 @@ function PlayerActor(type, pos, radius, spriteUrl, speed) {
             yP = x*Math.sin(omega) + y*Math.cos(omega);
 
             this.facing = [xP, yP];
+            ret = true;
+        } else if (oneMoreTick) { // The troll part...
+            oneMoreTick = false;
+            this.facing = this.vector;
             ret = true;
         } else {
             this.facing = this.vector;
@@ -83,6 +92,7 @@ function PlayerActor(type, pos, radius, spriteUrl, speed) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(x, y, this.radius, 0, 2*Math.PI);
+        ctx.lineWidth = 10;
         ctx.strokeStyle="#2eb82e";
         ctx.stroke();
         ctx.closePath();
@@ -127,7 +137,7 @@ function ActorFactory() {
     this.createActor = function (type, pos, radius, spriteUrl) {
         var actor;
         if (type === "player") {
-            actor = new PlayerActor(type, pos, radius, spriteUrl, 300);
+            actor = new PlayerActor(type, pos, radius, spriteUrl, 220);
         }  
         else if(type ==="dummy") {
             actor = new DummyActor(type, pos, radius, spriteUrl);
