@@ -1,15 +1,5 @@
-function logTuple(description, e){
-    console.log(description + "--> X: "+ e[0] + ", Y: " + e[1]);
-    
-}
-
-function getElemPosition(elem){
-    return [ elem.offsetLeft, 
-             elem.offsetTop];
-}
-
-function handleRightClick(e){
-    var player = actors[0];
+function playerMove(e){
+    var player = engine.actors[0];
 
     var xPosition = e.clientX;
     var yPosition = e.clientY;
@@ -18,10 +8,30 @@ function handleRightClick(e){
     
     player.dest = destPos;
     player.vector = getUnitVector(player.pos, player.dest); 
-    //logTuple("vector", player.vector);   
+
+    engine.console.textContent = "playerMove(e) : " +
+    "[" + event.clientX +
+    ", " + event.clientY + "]";
 
     player.status();
 }
+
+function playerAttack(){
+    engine.console.textContent = "Attack(e) : " +
+    "[" + engine.mousePos[0] +
+    ", " + engine.mousePos[1] + "]";
+}
+
+function playerStop(){
+    var player = engine.actors[0];
+
+    player.dest = player.pos;
+
+    engine.console.textContent = "playerStop()";
+}
+
+
+
 
 function getUnitVector(curPos, destPos){
     deltaX = destPos[0] - curPos[0];
@@ -39,4 +49,14 @@ function getDistance(curPos, destPos){
            Math.pow((destPos[0] - curPos[0]), 2) + 
            Math.pow((destPos[1] - curPos[1]), 2)
     )
+}
+
+function logTuple(description, e){
+    console.log(description + "--> X: "+ e[0] + ", Y: " + e[1]);
+    
+}
+
+function getElemPosition(elem){
+    return [ elem.offsetLeft, 
+             elem.offsetTop];
 }

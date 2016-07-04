@@ -11,7 +11,7 @@ body {
     margin: 0px;
     background: green;
     width: 100%;
-    height: 80vh;
+    height: 90vh;
 }
 
 #contentContainer {
@@ -24,6 +24,7 @@ body {
 
 #console {
     position: fixed;
+    padding: 8px;
     width: 100%;
     height: 20vh;
     background: white;

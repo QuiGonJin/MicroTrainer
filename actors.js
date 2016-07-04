@@ -17,7 +17,7 @@ function ActorProto (type, pos, radius) {
     }
 }
 
-function PlayerProto(type, pos, radius, speed) {
+function PlayerActor(type, pos, radius, speed) {
     ActorProto.call(this, "player", pos, radius);
     this.speed = speed;
     this.vector = [1, 0];
@@ -45,7 +45,28 @@ function PlayerProto(type, pos, radius, speed) {
     engine.ctx.arc(pos[0], pos[1], 50, 0, 2*Math.PI);
     engine.ctx.stroke();
 }
-PlayerProto.prototype = new ActorProto();
+PlayerActor.prototype = new ActorProto();
+
+
+function DummyProto(type, pos, radius) {
+    ActorProto.call(this, "dummy", pos, radius);
+    
+    this.update = function(){
+        return false;
+    }
+    
+    this.redraw = function(){
+        console.log("PLAYER redraw");
+        engine.ctx.beginPath();
+        engine.ctx.arc(this.pos[0], this.pos[1], this.radius, 0, 2*Math.PI);
+        engine.ctx.stroke();
+    }
+
+    engine.ctx.beginPath();
+    engine.ctx.arc(pos[0], pos[1], 50, 0, 2*Math.PI);
+    engine.ctx.stroke();
+}
+PlayerActor.prototype = new ActorProto();
 
 
 ActorProto.prototype.status = function(){
@@ -60,7 +81,7 @@ function ActorFactory() {
     this.createActor = function (type, pos, radius) {
         var actor;
         if (type === "player") {
-            actor = new PlayerProto(type, pos, radius, 4);
+            actor = new PlayerActor(type, pos, radius, 4);
         } else {
             console.log("Actor Type Undefined")
         }
