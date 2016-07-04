@@ -24,6 +24,7 @@ function playerStop(){
     var player = engine.actors[0];
 
     player.dest = player.pos;
+    player.vector = player.facing;
 
     mConsole.textContent = "playerStop()";
 }
@@ -40,6 +41,20 @@ function getUnitVector(curPos, destPos){
     vecY =  deltaY / magnitude;
     
     return [vecX, vecY];
+}
+
+function getTheta(vec1, vec2){
+    var x1 = vec1[0];
+    var x2 = vec2[0];
+    var y1 = vec1[1];
+    var y2 = vec2[1];
+
+
+    var dot = x1*x2 + y1*y2;    
+    var det = x1*y2 - y1*x2;
+
+    var angle = Math.atan2(det, dot);
+    return angle;
 }
 
 function getDistance(curPos, destPos){
