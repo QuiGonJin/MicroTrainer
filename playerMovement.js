@@ -9,15 +9,13 @@ function playerMove(e){
     player.dest = destPos;
     player.vector = getUnitVector(player.pos, player.dest); 
 
-    engine.console.textContent = "playerMove(e) : " +
+    mConsole.textContent = "playerMove(e) : " +
     "[" + event.clientX +
     ", " + event.clientY + "]";
-
-    player.status();
 }
 
 function playerAttack(){
-    engine.console.textContent = "Attack(e) : " +
+    mConsole.textContent = "Attack(e) : " +
     "[" + engine.mousePos[0] +
     ", " + engine.mousePos[1] + "]";
 }
@@ -27,7 +25,7 @@ function playerStop(){
 
     player.dest = player.pos;
 
-    engine.console.textContent = "playerStop()";
+    mConsole.textContent = "playerStop()";
 }
 
 
