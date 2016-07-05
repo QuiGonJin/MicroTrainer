@@ -12,6 +12,7 @@ var engine = {
   
   actorFactory: null,
   actors: [],
+  projectiles: [],
   hovered: null,
   clear: function(){
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -90,8 +91,10 @@ function init(){
   engine.actors.push( engine.actorFactory.createActor("player", [50, 50], 35, 'art/vayne.png') );
   engine.actors.push( engine.actorFactory.createActor("dummy", [150, 150], 35, 'art/duffmmy.png') );
   engine.actors.push( engine.actorFactory.createActor("dummy", [350, 350], 35, 'art/dummy.png') );
-
-
+  //engine.actors.push( engine.actorFactory.createActor("projectile", [250, 300], 10, 'art/dfummy.png') );
+  var p = engine.actorFactory.createActor("projectile", [250, 300], 10, 'art/dfummy.png');
+  p.setProperties([450,350], 400);
+  engine.actors.push(p);
   //-----------------START GAME LOOP------------------//
   //Check browser compatibility
   var animFrame = window.requestAnimationFrame  ||
