@@ -5,39 +5,96 @@
  * Actor draw and update functions are called by engine
  */
 
-
-var oneMoreTick = true; //hack solution to needing 1 more redraw 
+var actor = {
+    oneMoreTick: true, //hack solution to needing 1 more redraw 
+    waitingToFire: false,
+    target: null
+}
 
 function ActorFactory() {
     this.createActor = function (type, pos, radius, spriteUrl) {
-        var actor;
+        var mActor;
         if (type === "player") {
-            actor = new PlayerActor(type, pos, radius, spriteUrl);
-            actor.setProperties(220, 400);  //Initialize with default stats
+            mActor = new PlayerActor(type, pos, radius, spriteUrl);
+            mActor.setProperties(220, 400);  //Initialize with default stats
         }  
         else if (type ==="dummy") {
-            actor = new DummyActor(type, pos, radius, spriteUrl);
+            mActor = new DummyActor(type, pos, radius, spriteUrl);
         } 
         else if (type === "projectile"){
-            actor = new ProjectileActor(type, pos, radius, spriteUrl);
-            actor.setProperties(pos, 220);  //Default
+            mActor = new ProjectileActor(type, pos, radius, spriteUrl);
+            mActor.setProperties(pos, 220);  //Default
         }
         else {
             console.log("Actor Type Undefined")
         }
-        return actor;
+        return mActor;
     }
 }
 
 function ActorProto (type, pos, radius, spriteUrl) {
     this.type = type;
-    this.pos = pos;
+    if(pos){ //Need this or else it attempts to read the pos from when an actor proto is defined (null)
+        this.pos = [pos[0], pos[1]]; //must allocate new pos, or else takes reference to pos on heap
+    }
     this.radius = radius;
     this.sprite = resources.get(spriteUrl);
-    
+    this.needsUpdate = 0;
+
+
+    this.vector = [1, 0]; //direction of translation
+    this.facing = [1, 0]; //current direction of face
+    this.dir = [1,0];     //dest direction
+    this.dest = this.pos;
+
+    this.rotate = function(dt, _callback){
+        //var theta = getTheta(this.facing, this.vector)
+        var theta = getTheta(this.facing, this.dir);
+        
+        var omega = 10 * dt;
+        if( Math.abs(theta) > omega){
+            var x = this.facing[0];
+            var y = this.facing[1];
+            if(theta < 0){
+                omega = omega*-1;
+            } 
+            xP = x*Math.cos(omega) - y*Math.sin(omega);
+            yP = x*Math.sin(omega) + y*Math.cos(omega);
+
+            this.facing = [xP, yP];
+            this.needsUpdate = 1;
+        } else if (actor.oneMoreTick) { // The troll part...
+            actor.oneMoreTick = false;
+            this.facing = this.dir;
+            this.needsUpdate = 1;
+        } else {
+            this.facing = this.dir;
+            // this.vector = this.facing;
+            if(actor.waitingToFire && actor.target!= null){
+                _callback.apply(null, [this.pos, actor.target.pos, 800]);
+            } else {
+                
+            }
+        }
+    }
+    this.translate = function(dt, _callback){
+        //Update position
+        var heading = getUnitVector(this.dest, this.pos); //I don't know why this is backwards? yolo...
+        //If heading vector direction opposite of vector, then we've passed/reached the destination
+        //Check for sign change. For some peculiar reason this 'if' is true when the 'heading' and 'vector' are opposite
+        if( (heading[0]*this.vector[0] < 0) || ( heading[1]*this.vector[1] < 0)){
+            this.pos[0] += this.vector[0] * this.speed * dt;
+            this.pos[1] += this.vector[1] * this.speed * dt;
+            this.needsUpdate = 1;
+        } else {
+            this.pos = this.dest;
+            _callback();
+        }
+    }
+
     this.update = function(dt){
         //console.log("default actor update: ");
-        return true;
+        return 0;
     }
 
     this.draw = function(){
@@ -64,9 +121,6 @@ function ActorProto (type, pos, radius, spriteUrl) {
 
 function PlayerActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "player", pos, radius, spriteUrl);
-    this.vector = [1, 0];
-    this.facing = [1, 0];
-    this.dest = this.pos;
     
     this.setProperties = function(speed, range){
         this.speed = speed;
@@ -74,43 +128,15 @@ function PlayerActor(type, pos, radius, spriteUrl) {
     }
 
     this.update = function(dt){
-        var ret = false;
 
         //Update position
-        var heading = getUnitVector(this.dest, this.pos); //I don't know why this is backwards? yolo...
-        //If heading vector direction opposite of vector, then we've passed/reached the destination
-        //Check for sign change. For some peculiar reason this 'if' is true when the 'heading' and 'vector' are opposite
-        if( (heading[0]*this.vector[0] < 0) || ( heading[1]*this.vector[1] < 0)){
-            this.pos[0] += this.vector[0] * this.speed * dt;
-            this.pos[1] += this.vector[1] * this.speed * dt;
-            ret = true;
-        } else {
-            this.pos = this.dest;
-        }
-
+        this.translate(dt, function(){
+            //console.log("translate complete");
+        });
         //Update direction
-        var theta = getTheta(this.facing, this.vector)
-        var omega = 10 * dt;
-        if( Math.abs(theta) > omega){
-            var x = this.facing[0];
-            var y = this.facing[1];
-            if(theta < 0){
-                omega = omega*-1;
-            } 
-            xP = x*Math.cos(omega) - y*Math.sin(omega);
-            yP = x*Math.sin(omega) + y*Math.cos(omega);
+        this.rotate(dt, fireProjectile);
 
-            this.facing = [xP, yP];
-            ret = true;
-        } else if (oneMoreTick) { // The troll part...
-            oneMoreTick = false;
-            this.facing = this.vector;
-            ret = true;
-        } else {
-            this.facing = this.vector;
-        }
-
-        return ret;
+        return this.needsUpdate;
     }
     this.draw = function() {
         var ctx = engine.ctx;
@@ -150,8 +176,6 @@ PlayerActor.prototype = new ActorProto();
 
 function ProjectileActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "projectile", pos, radius, spriteUrl);
-    this.vector = [1, 0];
-    this.dest = this.pos; 
     
     this.setProperties = function(dest, speed){
         this.vector = getUnitVector(this.pos, dest);
@@ -160,8 +184,6 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
     }
 
     this.update = function(dt){
-        var ret = false;
-
         //Update position
         var heading = getUnitVector(this.dest, this.pos); //I don't know why this is backwards? yolo...
         //If heading vector direction opposite of vector, then we've passed/reached the destination
@@ -169,11 +191,12 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
         if( (heading[0]*this.vector[0] < 0) || ( heading[1]*this.vector[1] < 0)){
             this.pos[0] += this.vector[0] * this.speed * dt;
             this.pos[1] += this.vector[1] * this.speed * dt;
-            ret = true;
+            this.needsUpdate = 1;
         } else {
             this.pos = this.dest;
+            this.needsUpdate = 2;
         }
-        return ret;
+        return this.needsUpdate;
     }
     
     this.draw = function() {

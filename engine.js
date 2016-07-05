@@ -11,7 +11,7 @@ var engine = {
   lastTime: null,
   
   actorFactory: null,
-  actors: [],
+  units: [],
   projectiles: [],
   hovered: null,
   clear: function(){
@@ -39,10 +39,10 @@ function init(){
     function (event) {
       engine.mousePos = [event.clientX, event.clientY];
 
-      for (var i = 0; i < engine.actors.length; i++){
-        if( isInRadius(engine.actors[i].pos, engine.actors[i].radius, engine.mousePos) ){
+      for (var i = 0; i < engine.units.length; i++){
+        if( isInRadius(engine.units[i].pos, engine.units[i].radius, engine.mousePos) ){
           mConsole.textContent = "Is on Actor: " + i;
-          engine.hovered = engine.actors[i];
+          engine.hovered = engine.units[i];
           document.body.style.cursor = "crosshair";
           break;
         } else {
@@ -88,13 +88,11 @@ function init(){
   engine.canvas.width = engine.canvas.height * (engine.canvas.clientWidth / engine.canvas.clientHeight);
   engine.ctx = engine.canvas.getContext("2d");
   engine.actorFactory = new ActorFactory();
-  engine.actors.push( engine.actorFactory.createActor("player", [50, 50], 35, 'art/vayne.png') );
-  engine.actors.push( engine.actorFactory.createActor("dummy", [150, 150], 35, 'art/duffmmy.png') );
-  engine.actors.push( engine.actorFactory.createActor("dummy", [350, 350], 35, 'art/dummy.png') );
-  //engine.actors.push( engine.actorFactory.createActor("projectile", [250, 300], 10, 'art/dfummy.png') );
-  var p = engine.actorFactory.createActor("projectile", [250, 300], 10, 'art/dfummy.png');
-  p.setProperties([450,350], 400);
-  engine.actors.push(p);
+  engine.units.push( engine.actorFactory.createActor("player", [50, 50], 35, 'art/vayne.png') );
+  engine.units.push( engine.actorFactory.createActor("dummy", [150, 150], 35, 'art/duffmmy.png') );
+  engine.units.push( engine.actorFactory.createActor("dummy", [350, 350], 35, 'art/dummy.png') );
+  //engine.units.push( engine.actorFactory.createActor("projectile", [250, 300], 10, 'art/dfummy.png') );
+
   //-----------------START GAME LOOP------------------//
   //Check browser compatibility
   var animFrame = window.requestAnimationFrame  ||
@@ -129,14 +127,29 @@ function init(){
 function updateGame(dt) {
   var needsRedraw = false; //Don't waste redraws unless necessary
   
-  //---------------------UPDATE ACTORS-----------------//
-  for (var i = 0; i < engine.actors.length; i++){
-    if ( engine.actors[i].update(dt) == true ) {
-        needsRedraw = true;
+  //---------------------UPDATE UNITS-------------------//
+  for (var i = engine.units.length - 1; i >= 0; i--){
+    var r = engine.units[i].update(dt);
+    if ( r == 1 ) {
+      needsRedraw = true;
+    } else if ( r == 2 ) {
+      needsRedraw = true;
+      engine.units.splice(i, 1);
+    }
+  }
+  
+  //----------------------UPDATE PROJECTILES------------//
+  for (var i = engine.projectiles.length-1; i >= 0; i--){
+    var r = engine.projectiles[i].update(dt);
+    if ( r == 1 ) {
+      needsRedraw = true;
+    } else if ( r == 2 ) {
+      needsRedraw = true;
+      engine.projectiles.splice(i, 1);
     }
   }
 
-  //---------------------UPDATE KEYSTROKES-------------//
+  //---------------------UPDATE KEYSTROKES--------------//
   // a
   if (engine.keys && engine.keys[65]) { 
     //playerAttack();
@@ -158,7 +171,13 @@ function updateGame(dt) {
 function drawGame(dt) {
   engine.clear();
 
-  for (var i = 0; i < engine.actors.length; i++){
-    engine.actors[i].draw();
+  //Units(player, targets, enemies, whatever)
+  for (var i = engine.units.length - 1; i >= 0; i--){
+    engine.units[i].draw();
+  }
+  
+  //Projectiles
+  for (var i = engine.projectiles.length-1; i >= 0; i--){
+    engine.projectiles[i].draw();
   }
 }
