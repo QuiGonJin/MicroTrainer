@@ -1,7 +1,7 @@
 function playerMove(dest){
     actor.oneMoreTick = true;
 
-    actor.waitingToFire = false;
+    actor.readyToFire = false;
 
     var player = engine.units[0];
     var xPosition = dest[0];
@@ -18,36 +18,43 @@ function playerMove(dest){
     // ", " + event.clientY + "]";
 }
 
-function playerAttack(){
-    actor.oneMoreTick = true;
-    
+function playerSetTarget(pos){
     var player = engine.units[0];
-
-    if (engine.hovered != null){
-        if (isInRadius(player.pos, 400, engine.hovered.pos)){
-            actor.target = engine.hovered;
-            player.oneMoreTick = true;
-            playerStop();
-            player.dir = getUnitVector(player.pos, engine.hovered.pos);
-            actor.waitingToFire = true;
-            //fireProjectile(player.pos, engine.hovered.pos, 1200);
-        } else {
-            console.log("out of range");
-        }
+    if(engine.hovered != null){
+        actor.target = engine.hovered;
     } else {
-        console.log("what nigga");
+        actor.target = getClosestActor(player.pos);
     }
-    mConsole.textContent = "Attack(e) : " +
-    "[" + engine.mousePos[0] +
-    ", " + engine.mousePos[1] + "]";   
+    
+    if (isInRadius(player.pos, 400, actor.target.pos)){
+        actor.oneMoreTick = true;
+        playerStop();
+        player.dir = getUnitVector(player.pos, actor.target.pos);
+        playerSetAttack();
+    } else {
+        console.log("out of range");
+    }
+}
+
+
+function playerSetAttack(){
+    // var player = engine.units[0];
+    // var now = Date.now();
+    // var dt = (now - actor.lastFired); //milliseconds
+
+    //actor.waitingToFire = false;
+    actor.readyToFire = true;
+
 }
 
 function fireProjectile(source, dest, speed) {
     console.log("fire projectfeaile");
+    var now = Date.now();
+
     var p = engine.actorFactory.createActor("projectile", source, 10, 'art/dfummy.png');
     p.setProperties(dest, speed);
     engine.projectiles.push(p);
-    actor.waitingToFire = false;
+    actor.lastFired = now;
 }
 
 function playerStop(){
@@ -55,7 +62,7 @@ function playerStop(){
 
     player.dest = player.pos;
     player.vector = player.facing;
-    actor.waitingToFire = false;
+    actor.readyToFire = false;
 
     mConsole.textContent = "playerStop()";
 }

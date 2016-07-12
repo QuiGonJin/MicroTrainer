@@ -76,7 +76,8 @@ function init(){
     function (e) {
       engine.keys[e.keyCode] = false;
       if (e.keyCode == 65){
-        playerAttack();
+        playerSetTarget(engine.mousePos);
+        //playerAttack();
       }
     }
   )
@@ -109,6 +110,7 @@ function init(){
       // start the mainloop
       //reset(); << this is where reset should go
       engine.lastTime = Date.now();
+      actor.lastFired = Date.now();
       animFrame( recursiveAnim );
   } else {
       alert("Browser doesn't support requestAnimationFrame");

@@ -7,7 +7,10 @@
 
 var actor = {
     oneMoreTick: true, //hack solution to needing 1 more redraw 
+    attackCommand: false,
+    readyToFire: false,
     waitingToFire: false,
+    lastFired: null,
     target: null
 }
 
@@ -69,8 +72,10 @@ function ActorProto (type, pos, radius, spriteUrl) {
             this.needsUpdate = 1;
         } else {
             this.facing = this.dir;
-            // this.vector = this.facing;
-            if(actor.waitingToFire && actor.target!= null){
+            var now = Date.now();
+            var dt = (now - actor.lastFired); //milliseconds
+
+            if(actor.readyToFire && dt > 1000){
                 _callback.apply(null, [this.pos, actor.target.pos, 800]);
             } else {
                 

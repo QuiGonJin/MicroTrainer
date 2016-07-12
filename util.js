@@ -45,6 +45,21 @@ function getDistance(curPos, destPos){
     )
 }
 
+function getClosestActor(pos){
+    var closest = null;
+    var dist = 999999;
+    for (var i = engine.units.length - 1; i >= 1; i--){
+        var dSquared = 
+            ( Math.pow(( engine.units[i].pos[0] - pos[0]), 2) + 
+              Math.pow(( engine.units[i].pos[1] - pos[1]), 2) );
+        if (dSquared < dist){
+            dist = dSquared;
+            closest = engine.units[i];
+        }
+    }
+    return closest;
+}
+
 function logTuple(description, e){
     console.log(description + "--> X: "+ e[0] + ", Y: " + e[1]);
 }
