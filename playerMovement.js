@@ -1,60 +1,51 @@
 function playerMove(dest){
     actor.oneMoreTick = true;
-
-    actor.readyToFire = false;
-
+    actor.attackCommand = false;
     var player = engine.units[0];
     var xPosition = dest[0];
     var yPosition = dest[1];
     var destPos = [xPosition, yPosition];
-    logTuple("destPos", destPos);
+    //logTuple("destPos", destPos);
     
     player.dest = destPos;
     player.vector = getUnitVector(player.pos, player.dest); 
     player.dir = player.vector;
-
-    // mConsole.textContent = "playerMove(dest) : " +
-    // "[" + event.clientX +
-    // ", " + event.clientY + "]";
 }
 
-function playerSetTarget(pos){
+function playerSetTarget(targ){
     var player = engine.units[0];
-    if(engine.hovered != null){
-        actor.target = engine.hovered;
-    } else {
+
+    if (targ == null) {
         actor.target = getClosestActor(player.pos);
-    }
-    
-    if (isInRadius(player.pos, 400, actor.target.pos)){
-        actor.oneMoreTick = true;
-        playerStop();
-        player.dir = getUnitVector(player.pos, actor.target.pos);
-        playerSetAttack();
     } else {
-        console.log("out of range");
+        actor.target = targ;
     }
-}
+    playerStop();
+    player.dir = getUnitVector(player.pos, actor.target.pos);
 
+    if (!isInRadius(player.pos, 300, actor.target.pos)){
+        var mag = getDistance(player.pos, actor.target.pos) - 299;
+        var aDir = getUnitVector(player.pos,actor.target.pos);
+        var x = player.pos[0] + aDir[0] * mag;
+        var y = player.pos[1] + aDir[1] * mag;
+        playerMove([x, y]);
+    }
 
-function playerSetAttack(){
-    // var player = engine.units[0];
-    // var now = Date.now();
-    // var dt = (now - actor.lastFired); //milliseconds
-
-    //actor.waitingToFire = false;
-    actor.readyToFire = true;
-
+    actor.attackCommand = true;
 }
 
 function fireProjectile(source, dest, speed) {
-    console.log("fire projectfeaile");
-    var now = Date.now();
-
-    var p = engine.actorFactory.createActor("projectile", source, 10, 'art/dfummy.png');
-    p.setProperties(dest, speed);
-    engine.projectiles.push(p);
-    actor.lastFired = now;
+    var player = engine.units[0];
+    if (isInRadius(player.pos, 300, actor.target.pos)){
+        console.log("fire projectfeaile");
+        var now = Date.now();
+        var p = engine.actorFactory.createActor("projectile", source, 10, 'art/dfummy.png');
+        p.setProperties(dest, speed);
+        engine.projectiles.push(p);
+        actor.lastFired = now;
+    } else {
+        console.log("out of range");
+    }
 }
 
 function playerStop(){
@@ -62,7 +53,8 @@ function playerStop(){
 
     player.dest = player.pos;
     player.vector = player.facing;
-    actor.readyToFire = false;
+    player.dir = player.facing;
+    actor.attackCommand = false;
 
     mConsole.textContent = "playerStop()";
 }

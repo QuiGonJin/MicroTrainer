@@ -8,10 +8,10 @@
 var actor = {
     oneMoreTick: true, //hack solution to needing 1 more redraw 
     attackCommand: false,
-    readyToFire: false,
+    readyToFire: true,
     waitingToFire: false,
     lastFired: null,
-    target: null
+    target: null,
 }
 
 function ActorFactory() {
@@ -19,7 +19,7 @@ function ActorFactory() {
         var mActor;
         if (type === "player") {
             mActor = new PlayerActor(type, pos, radius, spriteUrl);
-            mActor.setProperties(220, 400);  //Initialize with default stats
+            mActor.setProperties(220, 300);  //Initialize with default stats
         }  
         else if (type ==="dummy") {
             mActor = new DummyActor(type, pos, radius, spriteUrl);
@@ -51,9 +51,7 @@ function ActorProto (type, pos, radius, spriteUrl) {
     this.dest = this.pos;
 
     this.rotate = function(dt, _callback){
-        //var theta = getTheta(this.facing, this.vector)
         var theta = getTheta(this.facing, this.dir);
-        
         var omega = 10 * dt;
         if( Math.abs(theta) > omega){
             var x = this.facing[0];
@@ -72,16 +70,26 @@ function ActorProto (type, pos, radius, spriteUrl) {
             this.needsUpdate = 1;
         } else {
             this.facing = this.dir;
-            var now = Date.now();
-            var dt = (now - actor.lastFired); //milliseconds
+            if (actor.attackCommand) {
+                this.attack(dt, _callback); 
+            }
+        }
+    }
 
-            if(actor.readyToFire && dt > 1000){
+    this.attack = function(dt, _callback){
+        var player = engine.units[0];
+        var now = Date.now();
+        var dt = (now - actor.lastFired); //milliseconds
+        
+        if (dt > 1000){
+            if (isInRadius(player.pos, 300, actor.target.pos)){
                 _callback.apply(null, [this.pos, actor.target.pos, 800]);
             } else {
                 
             }
         }
     }
+
     this.translate = function(dt, _callback){
         //Update position
         var heading = getUnitVector(this.dest, this.pos); //I don't know why this is backwards? yolo...
@@ -93,6 +101,7 @@ function ActorProto (type, pos, radius, spriteUrl) {
             this.needsUpdate = 1;
         } else {
             this.pos = this.dest;
+            actor.readyToFire = true;
             _callback();
         }
     }
@@ -115,6 +124,8 @@ function ActorProto (type, pos, radius, spriteUrl) {
         ctx.arc(x, y, this.radius, 0, 2*Math.PI);
         engine.ctx.strokeStyle="#000000";
         ctx.stroke();
+  
+
         ctx.closePath();
         ctx.clip();
         if(this.sprite){
@@ -136,8 +147,9 @@ function PlayerActor(type, pos, radius, spriteUrl) {
 
         //Update position
         this.translate(dt, function(){
-            //console.log("translate complete");
+            // nothing yet...
         });
+        
         //Update direction
         this.rotate(dt, fireProjectile);
 
@@ -173,6 +185,13 @@ function PlayerActor(type, pos, radius, spriteUrl) {
         ctx.lineTo(x - perpFace[0]*20, y - perpFace[1]*20);
         ctx.strokeStyle="#ffff00";
         ctx.stroke();
+        //Draw range indicator
+        ctx.beginPath();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle="#0099ff";
+        ctx.arc(x, y, 300, 0, 2*Math.PI);
+        ctx.stroke();
+        ctx.closePath;
     }
     
     this.draw();
@@ -234,6 +253,7 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
         ctx.lineTo(x - perpFace[0]*20, y - perpFace[1]*20);
         ctx.strokeStyle="#ffff00";
         ctx.stroke();
+        ctx.closePath();
     }
 
     this.draw();

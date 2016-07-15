@@ -76,7 +76,7 @@ function init(){
     function (e) {
       engine.keys[e.keyCode] = false;
       if (e.keyCode == 65){
-        playerSetTarget(engine.mousePos);
+        playerSetTarget(engine.hovered);
         //playerAttack();
       }
     }
