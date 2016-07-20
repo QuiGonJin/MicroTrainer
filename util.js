@@ -68,3 +68,20 @@ function getElemPosition(elem){
     return [ elem.offsetLeft, 
              elem.offsetTop];
 }
+
+function getHovered(dest){
+    for (var i = 1; i < engine.units.length; i++){
+        if( isInRadius(engine.units[i].pos, engine.units[i].radius, dest) ){
+            //mConsole.textContent = "Is on Actor: " + i;
+            //engine.hovered = engine.units[i];
+            document.body.style.cursor = "crosshair";
+            return engine.units[i];
+            //break;
+        } else {
+            document.body.style.cursor = "auto"; 
+            //engine.hovered = null;
+            mConsole.textContent = "";
+        }
+    }
+    return null;
+}

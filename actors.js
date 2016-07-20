@@ -5,21 +5,30 @@
  * Actor draw and update functions are called by engine
  */
 
+/**
+ * needsUpdate codes:
+ * 0 -> no update
+ * 1 -> normal update
+ * 2 -> update and remove
+ */
+
 var actor = {
     oneMoreTick: true, //hack solution to needing 1 more redraw 
     attackCommand: false,
-    readyToFire: true,
-    waitingToFire: false,
+    firing: false,
+    attackAnimBegin: null,
     lastFired: null,
     target: null,
 }
+
 
 function ActorFactory() {
     this.createActor = function (type, pos, radius, spriteUrl) {
         var mActor;
         if (type === "player") {
             mActor = new PlayerActor(type, pos, radius, spriteUrl);
-            mActor.setProperties(220, 300);  //Initialize with default stats
+            mActor.setProperties(220, 200, 600, 250);  //Initialize with default stats
+                                                   //MS, Range, Attack Period, Attack Anim Delay
         }  
         else if (type ==="dummy") {
             mActor = new DummyActor(type, pos, radius, spriteUrl);
@@ -70,20 +79,37 @@ function ActorProto (type, pos, radius, spriteUrl) {
             this.needsUpdate = 1;
         } else {
             this.facing = this.dir;
+
             if (actor.attackCommand) {
-                this.attack(dt, _callback); 
+                this.attack(dt, fireProjectile); 
             }
         }
     }
 
+
     this.attack = function(dt, _callback){
         var player = engine.units[0];
         var now = Date.now();
-        var dt = (now - actor.lastFired); //milliseconds
+        var ddt = (now - actor.lastFired); //milliseconds
         
-        if (dt > 1000){
-            if (isInRadius(player.pos, 300, actor.target.pos)){
-                _callback.apply(null, [this.pos, actor.target.pos, 800]);
+        //attack speed check
+        if (ddt > this.attackPeriod){
+            if (isInRadius(player.pos, this.range, actor.target.pos)){
+                //If it's not firing already, fire
+                if(!actor.firing){
+                    console.log("Set fire");
+                    actor.firing = true;
+                    actor.attackAnimBegin = now;
+                } else if (actor.firing) {
+                    var dddt = (now - actor.attackAnimBegin);
+                    if (dddt > this.attackDelay){
+                        console.log(dddt);
+                        console.log("FIRING");
+                        actor.firing = false;
+                        actor.attackAnimBegin = null;
+                        _callback.apply(null, [this.pos, actor.target.pos, 800]);
+                    }
+                }
             } else {
                 
             }
@@ -101,7 +127,6 @@ function ActorProto (type, pos, radius, spriteUrl) {
             this.needsUpdate = 1;
         } else {
             this.pos = this.dest;
-            actor.readyToFire = true;
             _callback();
         }
     }
@@ -138,9 +163,11 @@ function ActorProto (type, pos, radius, spriteUrl) {
 function PlayerActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "player", pos, radius, spriteUrl);
     
-    this.setProperties = function(speed, range){
+    this.setProperties = function(speed, range, attackPeriod, attackDelay){
         this.speed = speed;
         this.range = range;
+        this.attackPeriod = attackPeriod;
+        this.attackDelay = attackDelay; 
     }
 
     this.update = function(dt){
@@ -151,8 +178,9 @@ function PlayerActor(type, pos, radius, spriteUrl) {
         });
         
         //Update direction
-        this.rotate(dt, fireProjectile);
-
+        this.rotate(dt, function(){
+            //nothing yet...
+        });
         return this.needsUpdate;
     }
     this.draw = function() {
@@ -176,6 +204,20 @@ function PlayerActor(type, pos, radius, spriteUrl) {
             ctx.drawImage(this.sprite, x - radius, y - radius, this.radius*2, this.radius*2);
         }
         ctx.restore();
+
+        //Draw fire indicator
+
+        if (actor.firing){
+            var omega = (( Date.now() - actor.attackAnimBegin ) / this.attackDelay )  * 2 * Math.PI;
+
+            ctx.beginPath();
+            ctx.lineWidth = 5;
+            ctx.strokeStyle="#cc0000";
+            ctx.arc(x, y, radius + 5, 0, omega);
+            ctx.stroke();
+            ctx.closePath;
+        }
+
         //Draw direction arrow
         var perpFace = [this.facing[1]*-1, this.facing[0]];
         ctx.lineWidth = 10;
@@ -189,9 +231,12 @@ function PlayerActor(type, pos, radius, spriteUrl) {
         ctx.beginPath();
         ctx.lineWidth = 2;
         ctx.strokeStyle="#0099ff";
-        ctx.arc(x, y, 300, 0, 2*Math.PI);
+        ctx.arc(x, y, this.range, 0, 2*Math.PI);
         ctx.stroke();
         ctx.closePath;
+
+
+
     }
     
     this.draw();

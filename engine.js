@@ -37,20 +37,8 @@ function init(){
   //Mouse Move
   window.addEventListener('mousemove', 
     function (event) {
-      engine.mousePos = [event.clientX, event.clientY];
-
-      for (var i = 0; i < engine.units.length; i++){
-        if( isInRadius(engine.units[i].pos, engine.units[i].radius, engine.mousePos) ){
-          mConsole.textContent = "Is on Actor: " + i;
-          engine.hovered = engine.units[i];
-          document.body.style.cursor = "crosshair";
-          break;
-        } else {
-          document.body.style.cursor = "auto"; 
-          engine.hovered = null;
-          mConsole.textContent = "";
-        }
-      }
+      var mousePos = [event.clientX, event.clientY];
+      engine.hovered = getHovered(mousePos);
     }
   )
 
@@ -58,8 +46,7 @@ function init(){
   container.addEventListener("contextmenu", 
     function (e) {
       e.preventDefault();
-      
-      playerMove([event.clientX, event.clientY]);
+        playerMove([event.clientX, event.clientY]);
     } 
   )
   
