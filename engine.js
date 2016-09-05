@@ -96,8 +96,9 @@ function init(){
       };
       // start the mainloop
       //reset(); << this is where reset should go
+      var player = engine.units[0];
       engine.lastTime = Date.now();
-      actor.lastFired = Date.now();
+      player.lastFired = Date.now();
       animFrame( recursiveAnim );
   } else {
       alert("Browser doesn't support requestAnimationFrame");

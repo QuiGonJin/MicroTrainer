@@ -12,23 +12,13 @@
  * 2 -> update and remove
  */
 
-var actor = {
-    oneMoreTick: true, //hack solution to needing 1 more redraw 
-    attackCommand: false,
-    firing: false,
-    attackAnimBegin: null,
-    lastFired: null,
-    target: null,
-}
-
-
 function ActorFactory() {
     this.createActor = function (type, pos, radius, spriteUrl) {
         var mActor;
         if (type === "player") {
             mActor = new PlayerActor(type, pos, radius, spriteUrl);
-            mActor.setProperties(220, 200, 600, 250);  //Initialize with default stats
-                                                   //MS, Range, Attack Period, Attack Anim Delay
+            mActor.setProperties(170, 240, 600, 250, 500);  //Initialize with default stats
+                                                   //MS, Range, Attack Period, Attack Anim Delay, Attack Stall Delay
         }  
         else if (type ==="dummy") {
             mActor = new DummyActor(type, pos, radius, spriteUrl);
@@ -45,21 +35,44 @@ function ActorFactory() {
 }
 
 function ActorProto (type, pos, radius, spriteUrl) {
+    
+    //Variables describing the properties of the actor    
     this.type = type;
     if(pos){ //Need this or else it attempts to read the pos from when an actor proto is defined (null)
         this.pos = [pos[0], pos[1]]; //must allocate new pos, or else takes reference to pos on heap
     }
     this.radius = radius;
     this.sprite = resources.get(spriteUrl);
+    this.dest = this.pos;       //desired translation destination
+    this.vector = [1, 0];       //direction of translation
+    this.facing = [1, 0];       //current direction of face
+    this.dir = [1,0];           //actor's desired facing direction
+
+    //Variables for player commands
+    this.oneMoreTick = true;        //hack solution to needing 1 more redraw 
+    this.attackCommand = false;     //actor has been issued attackCommand?
+    this.firing = false;            //actor is in firing animation?
+    this.target = null;             //Current target selection
+
+    //Variables for basic attack
+    this.lastFired = null;          //The last time this actor has successfully fired a projectile
+    this.attackAnimBegin = null;    //Timer for animation leading up to firing the projectile
+    this.isStalled = false;         //Stalls actor for animation after firing the projectile
+    this.stallDelay = 500;          //How long actor is stalled. Default to 500
+
+    //update() returns the value of needsUpdate
+    //
+    // needsUpdate codes:
+    // 0 -> no update
+    // 1 -> normal update
+    // 2 -> update and remove this actor
     this.needsUpdate = 0;
 
-
-    this.vector = [1, 0]; //direction of translation
-    this.facing = [1, 0]; //current direction of face
-    this.dir = [1,0];     //dest direction
-    this.dest = this.pos;
-
     this.rotate = function(dt, _callback){
+        var player = engine.units[0];
+        if (this.attackCommand){
+            this.dir = getUnitVector(player.pos, this.target.pos); 
+        }
         var theta = getTheta(this.facing, this.dir);
         var omega = 10 * dt;
         if( Math.abs(theta) > omega){
@@ -73,15 +86,15 @@ function ActorProto (type, pos, radius, spriteUrl) {
 
             this.facing = [xP, yP];
             this.needsUpdate = 1;
-        } else if (actor.oneMoreTick) { // The troll part...
-            actor.oneMoreTick = false;
+        } else if (this.oneMoreTick) { 
+            // The troll 'oneMoreTick' part...
+            this.oneMoreTick = false;
             this.facing = this.dir;
             this.needsUpdate = 1;
         } else {
             this.facing = this.dir;
-
-            if (actor.attackCommand) {
-                this.attack(dt, fireProjectile); 
+            if (this.attackCommand) {
+                this.attack(dt, function(){}); 
             }
         }
     }
@@ -90,24 +103,27 @@ function ActorProto (type, pos, radius, spriteUrl) {
     this.attack = function(dt, _callback){
         var player = engine.units[0];
         var now = Date.now();
-        var ddt = (now - actor.lastFired); //milliseconds
+        var ddt = (now - this.lastFired); //milliseconds
         
         //attack speed check
         if (ddt > this.attackPeriod){
-            if (isInRadius(player.pos, this.range, actor.target.pos)){
+            if (isInRadius(player.pos, this.range, this.target.pos)){
                 //If it's not firing already, fire
-                if(!actor.firing){
+                if(!this.firing){
                     console.log("Set fire");
-                    actor.firing = true;
-                    actor.attackAnimBegin = now;
-                } else if (actor.firing) {
-                    var dddt = (now - actor.attackAnimBegin);
+                    this.firing = true;
+                    this.attackAnimBegin = now;
+                } else if (this.firing) {
+                    var dddt = (now - this.attackAnimBegin);
                     if (dddt > this.attackDelay){
                         console.log(dddt);
                         console.log("FIRING");
-                        actor.firing = false;
-                        actor.attackAnimBegin = null;
-                        _callback.apply(null, [this.pos, actor.target.pos, 800]);
+                        this.firing = false;
+                        this.attackAnimBegin = null;
+                        fireProjectile(this.pos, this.target.pos, 800);
+                        this.lastFired = now;
+                        //Player is stalled after firing projectile
+                        this.isStalled = true;
                     }
                 }
             } else {
@@ -116,12 +132,24 @@ function ActorProto (type, pos, radius, spriteUrl) {
         }
     }
 
+
     this.translate = function(dt, _callback){
+        var player = engine.units[0];
+        if (this.attackCommand){
+            if (!isInRadius(player.pos, player.range, this.target.pos)){
+                var mag = getDistance(player.pos, this.target.pos) - (player.range - 20);
+                var aDir = getUnitVector(player.pos,this.target.pos);
+                var x = player.pos[0] + aDir[0] * mag;
+                var y = player.pos[1] + aDir[1] * mag;
+                playerMove([x, y]);
+            }
+            this.attackCommand = true;
+        }
         //Update position
-        var heading = getUnitVector(this.dest, this.pos); //I don't know why this is backwards? yolo...
+        var heading = getUnitVector(this.pos, this.dest); 
         //If heading vector direction opposite of vector, then we've passed/reached the destination
-        //Check for sign change. For some peculiar reason this 'if' is true when the 'heading' and 'vector' are opposite
-        if( (heading[0]*this.vector[0] < 0) || ( heading[1]*this.vector[1] < 0)){
+        //Check for sign change.
+        if( (heading[0]*this.vector[0] > 0) || ( heading[1]*this.vector[1] > 0)){
             this.pos[0] += this.vector[0] * this.speed * dt;
             this.pos[1] += this.vector[1] * this.speed * dt;
             this.needsUpdate = 1;
@@ -132,7 +160,6 @@ function ActorProto (type, pos, radius, spriteUrl) {
     }
 
     this.update = function(dt){
-        //console.log("default actor update: ");
         return 0;
     }
 
@@ -163,26 +190,38 @@ function ActorProto (type, pos, radius, spriteUrl) {
 function PlayerActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "player", pos, radius, spriteUrl);
     
-    this.setProperties = function(speed, range, attackPeriod, attackDelay){
+    this.setProperties = function(speed, range, attackPeriod, attackDelay, stallDelay){
         this.speed = speed;
         this.range = range;
         this.attackPeriod = attackPeriod;
         this.attackDelay = attackDelay; 
+        this.stallDelay = stallDelay;
     }
 
     this.update = function(dt){
-
-        //Update position
-        this.translate(dt, function(){
-            // nothing yet...
-        });
-        
+        //Player cannot translate while stalled, but can still rotate and attack
+        if (!this.isStalled){
+            //Update position
+            this.translate(dt, function(){
+                //no callback needed yet...
+            });
+        } else {
+            console.log("stalled");
+            var now = Date.now();
+            var ddt = (now - this.lastFired); //milliseconds
+            if (ddt > this.stallDelay){
+                console.log("unstalled");
+                this.isStalled = false;
+            }    
+        }
         //Update direction
         this.rotate(dt, function(){
-            //nothing yet...
+            //no callback needed yet...
         });
+
         return this.needsUpdate;
     }
+
     this.draw = function() {
         var ctx = engine.ctx;
 
@@ -207,8 +246,8 @@ function PlayerActor(type, pos, radius, spriteUrl) {
 
         //Draw fire indicator
 
-        if (actor.firing){
-            var omega = (( Date.now() - actor.attackAnimBegin ) / this.attackDelay )  * 2 * Math.PI;
+        if (this.firing){
+            var omega = (( Date.now() - this.attackAnimBegin ) / this.attackDelay )  * 2 * Math.PI;
 
             ctx.beginPath();
             ctx.lineWidth = 5;
@@ -234,11 +273,7 @@ function PlayerActor(type, pos, radius, spriteUrl) {
         ctx.arc(x, y, this.range, 0, 2*Math.PI);
         ctx.stroke();
         ctx.closePath;
-
-
-
     }
-    
     this.draw();
 }
 PlayerActor.prototype = new ActorProto();
@@ -254,10 +289,11 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
 
     this.update = function(dt){
         //Update position
-        var heading = getUnitVector(this.dest, this.pos); //I don't know why this is backwards? yolo...
-        //If heading vector direction opposite of vector, then we've passed/reached the destination
-        //Check for sign change. For some peculiar reason this 'if' is true when the 'heading' and 'vector' are opposite
-        if( (heading[0]*this.vector[0] < 0) || ( heading[1]*this.vector[1] < 0)){
+
+        //If heading vector direction is opposite of vector, then we've passed/reached the destination
+        //Check for sign change. 
+        var heading = getUnitVector(this.pos, this.dest);
+        if( (heading[0]*this.vector[0] > 0) || ( heading[1]*this.vector[1] > 0)){
             this.pos[0] += this.vector[0] * this.speed * dt;
             this.pos[1] += this.vector[1] * this.speed * dt;
             this.needsUpdate = 1;
@@ -308,12 +344,22 @@ ProjectileActor.prototype = new ActorProto();
 
 function DummyActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "dummy", pos, radius, spriteUrl);
-    this.update = function(){
-        return false;
+    this.update = function(dt){
+        if(this.dest[0] < 1000){
+        this.dest[0] += 1;
+        } else this.dest[0] = 1;
+        
+        this.translate(dt, function(){
+            // nothing yet...
+        });
+
+        //console.log("Dummy update");        
+        return this.needsUpdate;
     }
     
     //Should call default actor redraw
 
     this.draw();
 }
+
 DummyActor.prototype = new ActorProto();
