@@ -80,7 +80,7 @@ function getHovered(dest){
         } else {
             document.body.style.cursor = "auto"; 
             //engine.hovered = null;
-            mConsole.textContent = "";
+            //mConsole.textContent = "";
         }
     }
     return null;

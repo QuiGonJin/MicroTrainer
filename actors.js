@@ -19,7 +19,10 @@ function ActorFactory() {
             mActor = new PlayerActor(type, pos, radius, spriteUrl);
             mActor.setProperties(170, 240, 600, 250, 500);  //Initialize with default stats
                                                    //MS, Range, Attack Period, Attack Anim Delay, Attack Stall Delay
-        }  
+        }
+        else if (type ==="objective") {
+            mActor = new ObjectiveActor(type, pos, radius, spriteUrl);
+        } 
         else if (type ==="dummy") {
             mActor = new DummyActor(type, pos, radius, spriteUrl);
         } 
@@ -51,10 +54,10 @@ function ActorProto (type, pos, radius, spriteUrl) {
     //Variables for player commands
     this.oneMoreTick = true;        //hack solution to needing 1 more redraw 
     this.attackCommand = false;     //actor has been issued attackCommand?
-    this.firing = false;            //actor is in firing animation?
     this.target = null;             //Current target selection
 
     //Variables for basic attack
+    this.firing = false;            //actor is in firing animation?
     this.lastFired = null;          //The last time this actor has successfully fired a projectile
     this.attackAnimBegin = null;    //Timer for animation leading up to firing the projectile
     this.isStalled = false;         //Stalls actor for animation after firing the projectile
@@ -110,17 +113,21 @@ function ActorProto (type, pos, radius, spriteUrl) {
             if (isInRadius(player.pos, this.range, this.target.pos)){
                 //If it's not firing already, fire
                 if(!this.firing){
-                    console.log("Set fire");
                     this.firing = true;
                     this.attackAnimBegin = now;
                 } else if (this.firing) {
                     var dddt = (now - this.attackAnimBegin);
                     if (dddt > this.attackDelay){
-                        console.log(dddt);
-                        console.log("FIRING");
                         this.firing = false;
                         this.attackAnimBegin = null;
                         fireProjectile(this.pos, this.target.pos, 800);
+                        if(scoreBoard.started){
+                            if(this.target == scoreBoard.objective){
+                                scoreBoard.numHits += 1;
+                            } else {
+                                scoreBoard.numMiss += 1;
+                            }
+                        }
                         this.lastFired = now;
                         //Player is stalled after firing projectile
                         this.isStalled = true;
@@ -164,7 +171,6 @@ function ActorProto (type, pos, radius, spriteUrl) {
     }
 
     this.draw = function(){
-        //console.log("default actor draw: ");
         var ctx = engine.ctx;
 
         var x = Math.round(this.pos[0]); //round pos to avoid sub-pixel rendering
@@ -176,7 +182,6 @@ function ActorProto (type, pos, radius, spriteUrl) {
         ctx.arc(x, y, this.radius, 0, 2*Math.PI);
         engine.ctx.strokeStyle="#000000";
         ctx.stroke();
-  
 
         ctx.closePath();
         ctx.clip();
@@ -206,11 +211,9 @@ function PlayerActor(type, pos, radius, spriteUrl) {
                 //no callback needed yet...
             });
         } else {
-            console.log("stalled");
             var now = Date.now();
             var ddt = (now - this.lastFired); //milliseconds
             if (ddt > this.stallDelay){
-                console.log("unstalled");
                 this.isStalled = false;
             }    
         }
@@ -298,6 +301,9 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
     this.ttl = 1000;
 
     this.impulse = function(dest, speed) {
+        if(scoreBoard.started){
+            updateScore();
+        }
         this.vector = getUnitVector(this.pos, dest);
         this.dest = dest;
         this.speed = speed;
@@ -363,6 +369,45 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
 }
 ProjectileActor.prototype = new ActorProto();
 
+function ObjectiveActor(type, pos, radius, spriteUrl) {
+    ActorProto.call(this, "objective", pos, radius, spriteUrl);
+    this.update = function(dt){
+        if(this.dest[0] < 1000){
+        this.dest[0] += 1;
+        } else this.dest[0] = 1;
+        
+        this.translate(dt, function(){
+            // nothing yet...
+        });
+       
+        return this.needsUpdate;
+    }
+    
+    //Should call default actor redraw
+    this.draw = function(){
+        var ctx = engine.ctx;
+
+        var x = Math.round(this.pos[0]); //round pos to avoid sub-pixel rendering
+        var y = Math.round(this.pos[1]);
+
+        ctx.lineWidth = 15;
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(x, y, this.radius, 0, 2*Math.PI);
+        engine.ctx.strokeStyle="#FF0000";
+        ctx.stroke();
+        
+        ctx.closePath();
+        ctx.clip();
+        if(this.sprite){
+            ctx.drawImage(this.sprite, x - radius, y - radius, this.radius*2, this.radius*2);
+        }
+        ctx.restore();
+    }
+    
+}
+ObjectiveActor.prototype = new ActorProto();
+
 
 function DummyActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "dummy", pos, radius, spriteUrl);
@@ -378,10 +423,8 @@ function DummyActor(type, pos, radius, spriteUrl) {
         //console.log("Dummy update");        
         return this.needsUpdate;
     }
-    
-    //Should call default actor redraw
 
+    //Should call default actor redraw
     this.draw();
 }
-
 DummyActor.prototype = new ActorProto();

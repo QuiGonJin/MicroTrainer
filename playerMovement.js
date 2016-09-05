@@ -2,9 +2,9 @@ function playerMove(dest){
     var player = engine.units[0];
 
     //manual move command overrides all other animations
-    player.firing = false;
+    playerStop();
+
     player.oneMoreTick = true;
-    player.attackCommand = false;
     player.isStalled = false;
 
     if(getHovered(dest) == null){
@@ -22,29 +22,37 @@ function playerMove(dest){
 
 function playerSetTarget(targ){
     var player = engine.units[0];
+    player.isStalled = false;
 
+    var originalTarget = player.target;
     if (targ == null) {
         player.target = getClosestActor(player.pos);
     } else {
         player.target = targ;
     }
-    playerStop();
-    player.dir = getUnitVector(player.pos, player.target.pos);
-
-    // if (!isInRadius(player.pos, player.range, actor.target.pos)){
-    //     var mag = getDistance(player.pos, actor.target.pos) - (player.range - 1);
-    //     var aDir = getUnitVector(player.pos,actor.target.pos);
-    //     var x = player.pos[0] + aDir[0] * mag;
-    //     var y = player.pos[1] + aDir[1] * mag;
-    //     playerMove([x, y]);
-    // }
-
-    player.attackCommand = true;
+    //Only reset attack bar if player selected a different target
+    if (player.target == originalTarget){
+        player.dest = player.pos;
+        player.vector = player.facing;
+        player.dir = getUnitVector(player.pos, player.target.pos);
+        player.attackCommand = true;
+    } else {
+        playerStop();
+        player.dir = getUnitVector(player.pos, player.target.pos);
+        player.attackCommand = true;
+        //Start keeping score
+        if(player.target == scoreBoard.objective){
+            if (!scoreBoard.started){
+                console.log("score start");
+                scoreBoard.started = true;
+                scoreBoard.startTime = Date.now();
+            }
+        }
+    }
 }
 
 function fireProjectile(source, dest, speed) {
     var player = engine.units[0];
-    console.log("fire projectfeaile");
     var now = Date.now();
     var p = engine.actorFactory.createActor("projectile", source, 10, 'art/dfummy.png');
     p.impulse(dest, speed);
@@ -53,12 +61,13 @@ function fireProjectile(source, dest, speed) {
 
 function playerStop(){
     var player = engine.units[0];
-
-    player.firing = false;
+    if(player.firing){
+        player.firing = false;
+        scoreBoard.numCanceled += 1;
+        updateScore();
+    }
     player.dest = player.pos;
     player.vector = player.facing;
     player.dir = player.facing;
     player.attackCommand = false;
-
-    mConsole.textContent = "playerStop()";
 }

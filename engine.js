@@ -1,6 +1,8 @@
 var container;
 var mConsole;
-
+var scoreField;
+var scoreContainer;
+var canceledField;
 /**
  * Holds state and functions related to game canvas
  */
@@ -19,6 +21,21 @@ var engine = {
   }
 }
 
+/**
+ * Variables related to scorekeeping
+ * Score is calculated as a percentage of damage dealt to the objective out of max damage possible
+ * Score calculation begins when the player targets the objective for the first time
+ */
+var scoreBoard = {
+  objective: null,
+  started: false,
+  startTime: null,
+  numHits: 1,
+  numMiss: 0,
+  numCanceled: 0
+}
+
+
 function startEngine(){
   resources.load([
     'art/vayne.png',
@@ -32,7 +49,9 @@ function init(){
   //-------------------HTML ELEMENTS------------------//
   container = document.getElementById("canvasContainer");
   mConsole = document.getElementById("console");
-
+  scoreContainer = document.getElementById("score");
+  scoreField = document.getElementById("scoreField");
+  canceledField = document.getElementById("canceledField");
   //-------------------LISTENERS----------------------//
   //Mouse Move
   window.addEventListener('mousemove', 
@@ -62,10 +81,6 @@ function init(){
   window.addEventListener('keyup', 
     function (e) {
       engine.keys[e.keyCode] = false;
-      if (e.keyCode == 65){
-        playerSetTarget(engine.hovered);
-        //playerAttack();
-      }
     }
   )
 
@@ -79,8 +94,8 @@ function init(){
   engine.units.push( engine.actorFactory.createActor("player", [50, 50], 35, 'art/vayne.png') );
   engine.units.push( engine.actorFactory.createActor("dummy", [150, 150], 35, 'art/duffmmy.png') );
   engine.units.push( engine.actorFactory.createActor("dummy", [350, 350], 35, 'art/dummy.png') );
-  //engine.units.push( engine.actorFactory.createActor("projectile", [250, 300], 10, 'art/dfummy.png') );
-
+  scoreBoard.objective = engine.actorFactory.createActor("objective", [300, 300], 35, 'art/dummy.png');
+  engine.units.push( scoreBoard.objective );
   //-----------------START GAME LOOP------------------//
   //Check browser compatibility
   var animFrame = window.requestAnimationFrame  ||
@@ -114,6 +129,33 @@ function init(){
   };
 }
 
+function updateScore(){
+  var now = Date.now();
+  var dt = (now - scoreBoard.startTime);
+  //console.log("Total time:" + dt);
+  
+  var maxAttacks = Math.trunc(dt / (engine.units[0].attackPeriod + engine.units[0].attackDelay)) + 1;
+  console.log("MAX: " + maxAttacks);
+  console.log("YOURS: " + scoreBoard.numHits)
+
+  var myScore = Math.trunc((scoreBoard.numHits / maxAttacks) * 100);
+  scoreField.innerHTML = myScore + "%";
+  if (myScore < 25) {
+    scoreContainer.style.backgroundColor = "#cc0000";
+  } else if (myScore < 50) {
+    scoreContainer.style.backgroundColor = "#ff6666";
+  } else if (myScore < 75) {
+    scoreContainer.style.backgroundColor = "#ffcc00";
+  } else if (myScore < 85) {
+    scoreContainer.style.backgroundColor = "#2eb82e";
+  } else {
+    scoreContainer.style.backgroundColor = "#00FFFF";
+  }
+
+  canceledField.innerHTML = scoreBoard.numCanceled;
+}
+
+
 function updateGame(dt) {
   var needsRedraw = false; //Don't waste redraws unless necessary
   
@@ -142,7 +184,7 @@ function updateGame(dt) {
   //---------------------UPDATE KEYSTROKES--------------//
   // a
   if (engine.keys && engine.keys[65]) { 
-    //playerAttack();
+    playerSetTarget(engine.hovered);
   }
   
   // s
