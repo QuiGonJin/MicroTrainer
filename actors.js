@@ -25,7 +25,7 @@ function ActorFactory() {
         } 
         else if (type === "projectile"){
             mActor = new ProjectileActor(type, pos, radius, spriteUrl);
-            mActor.setProperties(pos, 220);  //Default
+            //mActor.setProperties(pos, 220);  //Default
         }
         else {
             console.log("Actor Type Undefined")
@@ -278,28 +278,50 @@ function PlayerActor(type, pos, radius, spriteUrl) {
 }
 PlayerActor.prototype = new ActorProto();
 
+
+/**
+ * Unlike normal actors, projectiles are very short lived
+ * 
+ * When constructed they're just a stationary sprite
+ * Must call impulse(dest, speed) to 'fire' projectile
+ * Once impulse(dest, speed) is called, the projectile is given a vector, speed, and time to live (ttl)
+ * Projectile travels in speed * direction vector until it reaches its ttl and is deleted
+ * 
+ * All projectiles will default to expire after 1 second
+ *
+ * Projectiles are purely visual, damage calculation occurs regardless of animation
+ */
 function ProjectileActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "projectile", pos, radius, spriteUrl);
-    
-    this.setProperties = function(dest, speed){
+
+    this.moving = false; //Projectile doesn't move until given impulse(dest, speed)
+    this.ttl = 1000;
+
+    this.impulse = function(dest, speed) {
         this.vector = getUnitVector(this.pos, dest);
         this.dest = dest;
         this.speed = speed;
+        this.timeFired = Date.now();
+        this.ttl = (getDistance(this.pos, dest) / speed) * 1000;
+        this.moving = true;
     }
 
     this.update = function(dt){
-        //Update position
+        if(this.moving){
+            var now = Date.now();
+            var ddt = (now - this.timeFired);
 
-        //If heading vector direction is opposite of vector, then we've passed/reached the destination
-        //Check for sign change. 
-        var heading = getUnitVector(this.pos, this.dest);
-        if( (heading[0]*this.vector[0] > 0) || ( heading[1]*this.vector[1] > 0)){
-            this.pos[0] += this.vector[0] * this.speed * dt;
-            this.pos[1] += this.vector[1] * this.speed * dt;
-            this.needsUpdate = 1;
+            if (ddt < this.ttl){
+                this.pos[0] += this.vector[0] * this.speed * dt;
+                this.pos[1] += this.vector[1] * this.speed * dt;
+                this.needsUpdate = 1;                
+            } else {
+                // console.log("proj expire");
+                this.pos = this.dest;
+                this.needsUpdate = 2;
+            }
         } else {
-            this.pos = this.dest;
-            this.needsUpdate = 2;
+            this.needsUpdate = 0;
         }
         return this.needsUpdate;
     }

@@ -47,9 +47,8 @@ function fireProjectile(source, dest, speed) {
     console.log("fire projectfeaile");
     var now = Date.now();
     var p = engine.actorFactory.createActor("projectile", source, 10, 'art/dfummy.png');
-    p.setProperties(dest, speed);
+    p.impulse(dest, speed);
     engine.projectiles.push(p);
-    //actor.lastFired = now;
 }
 
 function playerStop(){
