@@ -4,11 +4,7 @@
 Micro Trainer is a javascript web application designed to practice or warm up movements commonly used in familiar isometric view video games
 
 ## Usage
-
-#### Installation
-Eventually this app will be hosted somewhere on the internet and will be accessible within the web browser, but for now you can just download the entire repository, and open index.html to play it locally.
-
-This app is designed for Chrome. It might work in other browsers but I'm not too sure.
+Can try it here: https://quigonjin.github.io/MicroTrainer/
 
 #### Movement
 * The Player is the unit highlighted with a green circle and has a yellow arrow protruding from it
