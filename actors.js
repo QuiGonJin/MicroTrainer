@@ -27,7 +27,7 @@ function ActorFactory() {
             mActor = new DummyActor(type, pos, radius, spriteUrl);
         } 
         else if (type === "projectile"){
-            mActor = new ProjectileActor(type, pos, 8, spriteUrl);
+            mActor = new ProjectileActor(type, pos, 12, spriteUrl);
             //mActor.setProperties(pos, 220);  //Default
         }
         else {
@@ -57,11 +57,13 @@ function ActorProto (type, pos, radius, spriteUrl) {
     this.target = null;             //Current target selection
 
     //Variables for basic attack
+    this.attackPeriod = 3000;
     this.firing = false;            //actor is in firing animation?
     this.lastFired = Date.now();          //The last time this actor has successfully fired a projectile
     this.attackAnimBegin = null;    //Timer for animation leading up to firing the projectile
     this.isStalled = false;         //Stalls actor for animation after firing the projectile
     this.stallDelay = 500;          //How long actor is stalled. Default to 500
+    this.health = 5;                //Default health 5
 
     //update() returns the value of needsUpdate
     //
@@ -70,6 +72,13 @@ function ActorProto (type, pos, radius, spriteUrl) {
     // 1 -> normal update
     // 2 -> update and remove this actor
     this.needsUpdate = 0;
+
+    this.isDead = function(){
+        if (this.health < 1 ){
+            this.needsUpdate = 2;
+            return 1;
+        } else return 0;
+    }
 
     this.rotate = function(dt, _callback){
         var player = engine.units[0];
@@ -102,43 +111,17 @@ function ActorProto (type, pos, radius, spriteUrl) {
         }
     }
 
-
-    this.attack = function(dt, _callback){
+    this.attack = function(){
         var player = engine.units[0];
         var now = Date.now();
-        var ddt = (now - this.lastFired); //milliseconds
-        
-        //attack speed check
-        if (ddt > this.attackPeriod){
-            if (isInRadius(player.pos, this.range, this.target.pos)){
-                //If it's not firing already, fire
-                if(!this.firing){
-                    this.firing = true;
-                    this.attackAnimBegin = now;
-                } else if (this.firing) {
-                    var dddt = (now - this.attackAnimBegin);
-                    if (dddt > this.attackDelay){
-                        this.firing = false;
-                        this.attackAnimBegin = null;
-                        fireProjectile(this.pos, this.target.pos, 800);
-                        if(scoreBoard.started){
-                            if(this.target == scoreBoard.objective){
-                                scoreBoard.numHits += 1;
-                            } else {
-                                scoreBoard.numMiss += 1;
-                            }
-                        }
-                        this.lastFired = now;
-                        //Player is stalled after firing projectile
-                        this.isStalled = true;
-                    }
-                }
-            } else {
-                
-            }
+        var dt = (now - this.lastFired);
+        if(dt > this.attackPeriod){
+            var p = engine.actorFactory.createActor("projectile", this.pos, 10, 'art/dfummy.png');
+            p.impulseWithManualTTL(player.pos, 200, 5000);
+            engine.projectiles.push(p);
+            this.lastFired = now;
         }
     }
-
 
     this.translate = function(dt, _callback){
         var player = engine.units[0];
@@ -195,12 +178,50 @@ function ActorProto (type, pos, radius, spriteUrl) {
 function PlayerActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "player", pos, radius, spriteUrl);
     
+    this.health = 15;
     this.setProperties = function(speed, range, attackPeriod, attackDelay, stallDelay){
         this.speed = speed;
         this.range = range;
         this.attackPeriod = attackPeriod;
         this.attackDelay = attackDelay; 
         this.stallDelay = stallDelay;
+    }
+
+    this.attack = function(dt, _callback){
+        var player = engine.units[0];
+        var now = Date.now();
+        var ddt = (now - this.lastFired); //milliseconds
+        
+        //attack speed check
+        if (ddt > this.attackPeriod){
+            if (isInRadius(player.pos, this.range, this.target.pos)){
+                //If it's not firing already, fire
+                if(!this.firing){
+                    this.firing = true;
+                    this.attackAnimBegin = now;
+                    playSound('pull');
+                } else if (this.firing) {
+                    var dddt = (now - this.attackAnimBegin);
+                    if (dddt > this.attackDelay){
+                        this.firing = false;
+                        this.attackAnimBegin = null;
+                        fireProjectile(this.pos, this.target.pos, 800);
+                        if(scoreBoard.started){
+                            if(this.target == scoreBoard.objective){
+                                scoreBoard.numHits += 1;
+                            } else {
+                                scoreBoard.numMiss += 1;
+                            }
+                        }
+                        this.lastFired = now;
+                        //Player is stalled after firing projectile
+                        this.isStalled = true;
+                    }
+                }
+            } else {
+                
+            }
+        }
     }
 
     this.update = function(dt){
@@ -288,7 +309,8 @@ PlayerActor.prototype = new ActorProto();
  * When constructed they're just a stationary sprite
  * Must call impulse(dest, speed) to 'fire' projectile
  * Once impulse(dest, speed) is called, the projectile is given a vector, speed, and time to live (ttl)
- * Projectile travels in speed * direction vector until it reaches its ttl and is deleted
+ * Projectile travels in speed * direction vector
+ * Projectile is deleted once it hits a unit, or reaches its ttl
  * 
  * All projectiles will default to expire after 1 second
  *
@@ -297,16 +319,19 @@ PlayerActor.prototype = new ActorProto();
 function ProjectileActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "projectile", pos, radius, spriteUrl);
 
-    this.ownership = 1; //friendly or enemy projectile
+    this.ownership = 1; //friendly or enemy projectile. 1 = player, 0 = enemy
     this.moving = false; //Projectile doesn't move until given impulse(dest, speed)
     this.vector = [0,1];
     this.ttl = 1000;
 
-
+    /**
+     * 'initiator' function for projectile. Must be called on projectile for it to move.
+     * Sets the vector, speed, and ttl of the projectile
+     */
     this.impulse = function(dest, speed) {
-        if(scoreBoard.started){
-            updateScore();
-        }
+        // if(scoreBoard.started){
+        //     updateScore();
+        // }
         this.vector = getUnitVector(this.pos, dest);
         console.log(this.vector);
         this.dest = dest;
@@ -316,8 +341,14 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
         this.moving = true;
     }
 
-    //Used for 'skill shots'
+    /**
+     * Similar to above function
+     * Used for 'skill shots'. Mostly applies to enemy projectiles
+     */
     this.impulseWithManualTTL = function (dest, speed, ttl){
+        // if(scoreBoard.started){
+        //     updateScore();
+        // }
         this.ownership = 0;
         this.vector = getUnitVector(this.pos, dest);
         this.dest = dest;
@@ -325,6 +356,31 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
         this.timeFired = Date.now();
         this.ttl = ttl;
         this.moving = true;
+    }
+
+    this.checkHit = function () {
+        var player = engine.units[0];
+        //friendly projectile
+        if(this.ownership == 1){
+            for (var i = engine.units.length - 1; i >= 1; i--){
+                var u = engine.units[i];
+                if (isInRadius(u.pos, u.radius + this.radius, this.pos )){
+                    engine.units[i].health -= 1;
+                    console.log("Unit[" + i +"] has been hit. HEATH: " + engine.units[i].health);
+                    playSound('impact');
+                    return 1;
+                }
+            }
+        } 
+        //enemy projectile
+        if (this.ownership == 0){
+            if (isInRadius(player.pos, player.radius + this.radius, this.pos)){
+                player.health -= 1;
+                console.log("Player has been hit. HEALTH: " + player.health);
+                return 1;
+            }
+        }
+        return 0;
     }
 
     this.update = function(dt){
@@ -358,7 +414,6 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
         ctx.save();
         ctx.beginPath();
         //ctx.moveTo(this.pos[0], this.pos[1]);
-        console.log(this.vector);
         //ctx.lineTo(this.pos[0] - (this.vector[0] * 30), this.pos[1] - (this.vector[1] * 30)) ;
         ctx.arc(x, y, this.radius, 0, 2*Math.PI);
         ctx.lineWidth = 7;
@@ -367,6 +422,7 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
         ctx.closePath();
         ctx.clip();
         ctx.restore();
+
         //Draw direction arrow
         var perpFace = [this.vector[1]*-1, this.vector[0]];
         ctx.lineWidth = 6;
@@ -391,7 +447,10 @@ function ObjectiveActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "objective", pos, radius, spriteUrl);
     this.turnFlag = 1; //Indicates forwards or backwards
     this.speed = 1;
+    this.health = 25;
+
     this.update = function(dt){
+        this.attack();
         if(this.pos[0] < engine.canvas.width && this.pos[0] > 0){
             if(this.turnFlag == 1){
                 //console.log("forwards");
@@ -436,25 +495,19 @@ ObjectiveActor.prototype = new ActorProto();
 function DummyActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "dummy", pos, radius, spriteUrl);
     this.lastFired = Date.now();
-    this.attackPeriod = 1500;
-
-    this.attack = function(){
-        var player = engine.units[0];
-        var now = Date.now();
-        var dt = (now - this.lastFired);
-        if(dt > this.attackPeriod){
-            var v = getUnitVector(this.pos, player.pos);
-            var d = v*1000;
-
-            var p = engine.actorFactory.createActor("projectile", this.pos, 10, 'art/dfummy.png');
-            p.impulseWithManualTTL(player.pos, 200, 5000);
-            engine.projectiles.push(p);
-            this.lastFired = now;
-        }
-    }
+    this.attackPeriod = Math.floor( (Math.random() * 4000)  + 1000);
 
     this.update = function(dt){
-      
+        if(this.isDead()){
+            var player = engine.units[0];
+            //remove player aggro if it's still on this unit
+            if (player.target == this) {
+                player.target = null;
+                player.attackCommand = false;
+            }
+            return 2;
+        }
+
         this.attack();
         return this.needsUpdate;
     }

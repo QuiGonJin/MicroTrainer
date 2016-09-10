@@ -7,6 +7,9 @@ body {
     background-color: gold;
 }
 
+/*
+* GAMEPLAY SCREEN =======================================
+*/
 #canvasContainer{
     position: relative;
     margin: 0px;
@@ -14,7 +17,6 @@ body {
     width: 100%;
     height: 90vh;
 }
-
 #contentContainer {
     position: relative;
     margin: 0px;
@@ -22,7 +24,6 @@ body {
     /*width: 100%;
     height: 80vh;*/
 }
-
 #console {
     position: fixed;
     padding: 0px;
@@ -31,7 +32,7 @@ body {
     background: white;
     z-index: 3;
 }
-#score {
+.readout{
     position: relative;
     display: inline-block;
     text-align: center;
@@ -40,14 +41,46 @@ body {
     width: 200px;
     height: 30vh;
     background: #00FFFF;
+
 }
-#canceled {
+/*
+* SCORE SCREEN =======================================
+*/
+#scoreContainer{
+    position: absolute;
+    left: 0px;
+    bottom: 0px;
+    background: lightgray;
+    width: 100%;
+    height: 90vh;
+    z-index: 5;
+    visibility: hidden;
+}
+
+#scoreDetails{
     position: relative;
-    display: inline-block;
+    width: 70%;
+    margin: 0 auto;
+    height: 100%;
     text-align: center;
+}
+
+#outcome{
+    display: inline-block;
+    margin: 50px;
+    font-size: 72px;
+}
+
+#scoreDetailsField{
+    font-size: 32px;
+}
+
+#replay{
+    font-size: 24px;
+    display: inline-block;
     padding: 12px;
-    margin: 0px;
-    width: 200px;
-    height: 30vh;
-    background: gray;
+    color: lightgray;
+    background-color: #333333;
+    cursor: pointer;
+    margin: 50px;
 }

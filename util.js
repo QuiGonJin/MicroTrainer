@@ -3,6 +3,9 @@
  * Various geometry / vector utility functions
  */
 
+/**
+ * Check if point [x, y] is inside of a given radius at center [x, y]
+ */
 function isInRadius(center, radius, point) {
     var mouseX = point[0];
     var mouseY = point[1];

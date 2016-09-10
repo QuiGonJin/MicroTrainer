@@ -1,3 +1,4 @@
+
 function playerMove(dest){
     var player = engine.units[0];
 
@@ -20,6 +21,11 @@ function playerMove(dest){
     }
 }
 
+function playSound(type){
+    var pick = type + Math.floor((Math.random() * 3) + 1);
+    sounds[pick].play();
+}
+
 function playerSetTarget(targ){
     var player = engine.units[0];
     player.isStalled = false;
@@ -40,14 +46,6 @@ function playerSetTarget(targ){
         playerStop();
         player.dir = getUnitVector(player.pos, player.target.pos);
         player.attackCommand = true;
-        //Start keeping score
-        if(player.target == scoreBoard.objective){
-            if (!scoreBoard.started){
-                console.log("score start");
-                scoreBoard.started = true;
-                scoreBoard.startTime = Date.now();
-            }
-        }
     }
 }
 
@@ -55,6 +53,8 @@ function fireProjectile(source, dest, speed) {
     var player = engine.units[0];
     var now = Date.now();
     var p = engine.actorFactory.createActor("projectile", source, 10, 'art/dfummy.png');
+    //sounds['fire2'].play();
+    playSound('fire');
     p.impulse(dest, speed);
     engine.projectiles.push(p);
 }

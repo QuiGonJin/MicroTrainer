@@ -1,8 +1,9 @@
 var container;
 var mConsole;
-var scoreField;
 var scoreContainer;
 var canceledField;
+var outcome;
+var scoreDetailsField;
 /**
  * Holds state and functions related to game canvas
  */
@@ -16,10 +17,34 @@ var engine = {
   units: [],
   projectiles: [],
   hovered: null,
+  gameOver: false,
   clear: function(){
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 }
+
+var sounds = {
+    pull1: new Audio('sound/bowPull1.wav'),
+    pull2: new Audio('sound/bowPull2.wav'),
+    pull3: new Audio('sound/bowPull3.wav'),
+    impact1: new Audio('sound/impact1.wav'),
+    impact2: new Audio('sound/impact2.wav'),
+    impact3: new Audio('sound/impact3.wav'),
+    fire1: new Audio('sound/fire1.wav'),
+    fire2: new Audio('sound/fire2.wav'),
+    fire3: new Audio('sound/fire3.wav'),
+    kill1: new Audio('sound/kill1.wav'),
+    kill2: new Audio('sound/kill2.wav'),
+    kill3: new Audio('sound/kill3.wav'),
+    
+}
+
+// var colors = {
+//   friendly = "#339966",
+//   enemy = "#cc0000",
+//   hp100 = "#00ff00",
+
+// }
 
 /**
  * Variables related to scorekeeping
@@ -29,8 +54,7 @@ var engine = {
 var scoreBoard = {
   objective: null,
   started: false,
-  startTime: null,
-  numHits: 1,
+  numHits: 0,
   numMiss: 0,
   numCanceled: 0
 }
@@ -40,18 +64,29 @@ function startEngine(){
   resources.load([
     'art/vayne.png',
     'art/attackCursor.png',
-    'art/dummy.png'
+    'art/dummy.png',
+    'art/teeto.png'
   ]);
   resources.onReady(init);
 }
 
 function init(){
   //-------------------HTML ELEMENTS------------------//
+  //Game Screen
   container = document.getElementById("canvasContainer");
   mConsole = document.getElementById("console");
-  scoreContainer = document.getElementById("score");
-  scoreField = document.getElementById("scoreField");
+  
+  objectiveHPField = document.getElementById("objectiveHPField");
   canceledField = document.getElementById("canceledField");
+  playerHPField = document.getElementById("playerHPField");
+
+  //Score Screen
+  scoreContainer = document.getElementById("scoreContainer");
+  outcome = document.getElementById("outcome");
+  scoreDetailsField = document.getElementById("scoreDetailsField");
+                   
+
+
   //-------------------LISTENERS----------------------//
   //Mouse Move
   window.addEventListener('mousemove', 
@@ -92,8 +127,11 @@ function init(){
   engine.ctx = engine.canvas.getContext("2d");
   engine.actorFactory = new ActorFactory();
   engine.units.push( engine.actorFactory.createActor("player", [50, 50], 35, 'art/vayne.png') );
-  engine.units.push( engine.actorFactory.createActor("dummy", [150, 150], 35, 'art/duffmmy.png') );
-  engine.units.push( engine.actorFactory.createActor("dummy", [350, 350], 35, 'art/dummy.png') );
+  engine.units.push( engine.actorFactory.createActor("dummy", [200, 150], 35, 'art/teeto.png') );
+  engine.units.push( engine.actorFactory.createActor("dummy", [400, 500], 35, 'art/teeto.png') );
+  engine.units.push( engine.actorFactory.createActor("dummy", [600, 150], 35, 'art/teeto.png') );
+  engine.units.push( engine.actorFactory.createActor("dummy", [800, 500], 35, 'art/teeto.png') );
+  engine.units.push( engine.actorFactory.createActor("dummy", [1000, 150], 35, 'art/teeto.png') );
   scoreBoard.objective = engine.actorFactory.createActor("objective", [300, 300], 35, 'art/dummy.png');
   engine.units.push( scoreBoard.objective );
   //-----------------START GAME LOOP------------------//
@@ -110,50 +148,58 @@ function init(){
           animFrame( recursiveAnim );
       };
       // start the mainloop
-      //reset(); << this is where reset should go
       var player = engine.units[0];
       engine.lastTime = Date.now();
-      //player.lastFired = Date.now();
+      engine.startTime = Date.now();
+      scoreBoard.started = true;
       animFrame( recursiveAnim );
   } else {
       alert("Browser doesn't support requestAnimationFrame");
   }
 
   var mainloop = function() {
+    if(!engine.gameOver){
       var now = Date.now();
       var dt = (now - engine.lastTime) / 1000.0;
 
       updateGame(dt);
       engine.lastTime = now;
-      engine.startTime = now;
-      //drawGame(dt); Will be called by updateGame if necessary
+    }
   };
 }
 
+function restart(){
+  console.log("restart");
+  window.location = 'index.html';
+}
 function updateScore(){
-  var now = Date.now();
-  var dt = (now - scoreBoard.startTime);
-  //console.log("Total time:" + dt);
-  
-  var maxAttacks = Math.trunc(dt / (engine.units[0].attackPeriod + engine.units[0].attackDelay)) + 1;
-  console.log("MAX: " + maxAttacks);
-  console.log("YOURS: " + scoreBoard.numHits)
+  var player = engine.units[0];
+  //Player HP
+  playerHPField.innerHTML = player.health + " / 15";
 
-  var myScore = Math.trunc((scoreBoard.numHits / maxAttacks) * 100);
-  scoreField.innerHTML = myScore + "%";
-  if (myScore < 25) {
-    scoreContainer.style.backgroundColor = "#cc0000";
-  } else if (myScore < 50) {
-    scoreContainer.style.backgroundColor = "#ff6666";
-  } else if (myScore < 75) {
-    scoreContainer.style.backgroundColor = "#ffcc00";
-  } else if (myScore < 85) {
-    scoreContainer.style.backgroundColor = "#2eb82e";
-  } else {
-    scoreContainer.style.backgroundColor = "#00FFFF";
+  //Objective HP
+  objectiveHPField.innerHTML = scoreBoard.objective.health;
+
+  //Canceled Attacks
+  canceledField.innerHTML = scoreBoard.numCanceled;
+
+  if(player.health < 1){
+    var now = Date.now();
+    var dt = (now - engine.startTime);
+    engine.gameOver = true;
+    scoreContainer.style.visibility = "visible";
+    outcome.innerHTML = "You Died";
+    scoreDetailsField.innerHTML = "Successfully fired " + scoreBoard.numHits + " attacks in " + dt/1000 + " seconds. <br>";
   }
 
-  canceledField.innerHTML = scoreBoard.numCanceled;
+  if(scoreBoard.objective.health < 1){
+    var now = Date.now();
+    var dt = (now - engine.startTime);
+    engine.gameOver = true;
+    scoreContainer.style.visibility = "visible";
+    outcome.innerHTML = "Victory!";
+    scoreDetailsField.innerHTML = "Successfully fired " + scoreBoard.numHits + " attacks in " + dt/1000 + " seconds. <br>";
+  }
 }
 
 
@@ -166,6 +212,8 @@ function updateGame(dt) {
     if ( r == 1 ) {
       needsRedraw = true;
     } else if ( r == 2 ) {
+      playSound('kill');
+      //console.log("Delete unit");
       needsRedraw = true;
       engine.units.splice(i, 1);
     }
@@ -212,5 +260,11 @@ function drawGame(dt) {
   //Projectiles
   for (var i = engine.projectiles.length-1; i >= 0; i--){
     engine.projectiles[i].draw();
+    if(engine.projectiles[i].checkHit()){
+      engine.projectiles.splice(i, 1);
+        if(scoreBoard.started){
+          updateScore();
+        }
+    }
   }
 }

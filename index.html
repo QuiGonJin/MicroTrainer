@@ -12,20 +12,43 @@
 <body onload = "startEngine();">
     <div id = "canvasContainer">
         <canvas id = "contentContainer">
-            <div id = "player"></div> 
         </canvas>
-    </div>
-    <div id = "console">
-        <div id = "score">
-            Damage Dealt
-            <br> 
-            <span id = "scoreField">NaN</span>
+        
+        <div id = "scoreContainer">
+            <div id = "scoreDetails">
+                <div id = "outcome">
+                    VICTORY
+                </div>
+                <div id = "scoreDetailsField">
+                </div>
+                <span id = "replay" onclick="restart()">
+                    Replay
+                </span>
+            </div>
         </div>
-        <div id = "canceled">
+    </div>
+
+    <div id = "console">
+         <div class = "readout" id = "playerHP">
+            Your HP
+            <br>
+            <span id = "playerHPField">15 / 15</span>
+        </div>
+
+        <div class = "readout" id = "objectiveHP">
+            Objective HP
+            <br> 
+            <span id = "objectiveHPField">25</span>
+        </div>
+
+        <div class = "readout" id = "canceled">
             Attack Cancels
             <br>
             <span id = "canceledField">0</span>
         </div>
+
+
+
     </div>
 </body>
 </html>
