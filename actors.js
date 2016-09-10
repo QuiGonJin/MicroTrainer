@@ -27,7 +27,7 @@ function ActorFactory() {
             mActor = new DummyActor(type, pos, radius, spriteUrl);
         } 
         else if (type === "projectile"){
-            mActor = new ProjectileActor(type, pos, radius, spriteUrl);
+            mActor = new ProjectileActor(type, pos, 8, spriteUrl);
             //mActor.setProperties(pos, 220);  //Default
         }
         else {
@@ -58,7 +58,7 @@ function ActorProto (type, pos, radius, spriteUrl) {
 
     //Variables for basic attack
     this.firing = false;            //actor is in firing animation?
-    this.lastFired = null;          //The last time this actor has successfully fired a projectile
+    this.lastFired = Date.now();          //The last time this actor has successfully fired a projectile
     this.attackAnimBegin = null;    //Timer for animation leading up to firing the projectile
     this.isStalled = false;         //Stalls actor for animation after firing the projectile
     this.stallDelay = 500;          //How long actor is stalled. Default to 500
@@ -297,18 +297,33 @@ PlayerActor.prototype = new ActorProto();
 function ProjectileActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "projectile", pos, radius, spriteUrl);
 
+    this.ownership = 1; //friendly or enemy projectile
     this.moving = false; //Projectile doesn't move until given impulse(dest, speed)
+    this.vector = [0,1];
     this.ttl = 1000;
+
 
     this.impulse = function(dest, speed) {
         if(scoreBoard.started){
             updateScore();
         }
         this.vector = getUnitVector(this.pos, dest);
+        console.log(this.vector);
         this.dest = dest;
         this.speed = speed;
         this.timeFired = Date.now();
         this.ttl = (getDistance(this.pos, dest) / speed) * 1000;
+        this.moving = true;
+    }
+
+    //Used for 'skill shots'
+    this.impulseWithManualTTL = function (dest, speed, ttl){
+        this.ownership = 0;
+        this.vector = getUnitVector(this.pos, dest);
+        this.dest = dest;
+        this.speed = speed;
+        this.timeFired = Date.now();
+        this.ttl = ttl;
         this.moving = true;
     }
 
@@ -322,7 +337,7 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
                 this.pos[1] += this.vector[1] * this.speed * dt;
                 this.needsUpdate = 1;                
             } else {
-                // console.log("proj expire");
+                console.log("proj expire");
                 this.pos = this.dest;
                 this.needsUpdate = 2;
             }
@@ -342,25 +357,28 @@ function ProjectileActor(type, pos, radius, spriteUrl) {
         ctx.lineWidth = 5;
         ctx.save();
         ctx.beginPath();
+        //ctx.moveTo(this.pos[0], this.pos[1]);
+        console.log(this.vector);
+        //ctx.lineTo(this.pos[0] - (this.vector[0] * 30), this.pos[1] - (this.vector[1] * 30)) ;
         ctx.arc(x, y, this.radius, 0, 2*Math.PI);
-        ctx.lineWidth = 10;
-        ctx.strokeStyle="#2eb82e";
+        ctx.lineWidth = 7;
+        ctx.strokeStyle="#000000";
         ctx.stroke();
         ctx.closePath();
         ctx.clip();
-        //Draw portrait if available
-        if(this.sprite){
-            ctx.drawImage(this.sprite, x - radius, y - radius, this.radius*2, this.radius*2);
-        }
         ctx.restore();
         //Draw direction arrow
         var perpFace = [this.vector[1]*-1, this.vector[0]];
-        ctx.lineWidth = 10;
+        ctx.lineWidth = 6;
         ctx.beginPath();
-        ctx.moveTo(x + perpFace[0]*20, y + perpFace[1]*20);
-        ctx.lineTo(x + this.vector[0]*radius*1.5, y + this.vector[1]*radius*1.5);
-        ctx.lineTo(x - perpFace[0]*20, y - perpFace[1]*20);
-        ctx.strokeStyle="#ffff00";
+        ctx.moveTo(x + perpFace[0]*10, y + perpFace[1]*10);
+        ctx.lineTo(x + this.vector[0]*radius*2.5, y + this.vector[1]*radius*2.5);
+        ctx.lineTo(x - perpFace[0]*10, y - perpFace[1]*10);
+        if (this.ownership == 1){
+            ctx.strokeStyle = "#2eb82e";
+        } else {
+            ctx.strokeStyle = "#FF0000";
+        }
         ctx.stroke();
         ctx.closePath();
     }
@@ -371,19 +389,25 @@ ProjectileActor.prototype = new ActorProto();
 
 function ObjectiveActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "objective", pos, radius, spriteUrl);
+    this.turnFlag = 1; //Indicates forwards or backwards
+    this.speed = 1;
     this.update = function(dt){
-        if(this.dest[0] < 1000){
-        this.dest[0] += 1;
-        } else this.dest[0] = 1;
-        
-        this.translate(dt, function(){
-            // nothing yet...
-        });
-       
+        if(this.pos[0] < engine.canvas.width && this.pos[0] > 0){
+            if(this.turnFlag == 1){
+                //console.log("forwards");
+                this.pos[0] += this.speed;
+            } else {
+                //console.log("backwards");
+                this.pos[0] -= this.speed;
+            }
+        } else {
+            //console.log("turn");
+            this.pos[0] = this.pos[0] - (this.turnFlag * 5); //boost pos by +/- 5 so it doesn't get stuck on the edges
+            this.turnFlag = this.turnFlag * -1;
+        }
         return this.needsUpdate;
     }
-    
-    //Should call default actor redraw
+
     this.draw = function(){
         var ctx = engine.ctx;
 
@@ -411,16 +435,27 @@ ObjectiveActor.prototype = new ActorProto();
 
 function DummyActor(type, pos, radius, spriteUrl) {
     ActorProto.call(this, "dummy", pos, radius, spriteUrl);
-    this.update = function(dt){
-        if(this.dest[0] < 1000){
-        this.dest[0] += 1;
-        } else this.dest[0] = 1;
-        
-        this.translate(dt, function(){
-            // nothing yet...
-        });
+    this.lastFired = Date.now();
+    this.attackPeriod = 1500;
 
-        //console.log("Dummy update");        
+    this.attack = function(){
+        var player = engine.units[0];
+        var now = Date.now();
+        var dt = (now - this.lastFired);
+        if(dt > this.attackPeriod){
+            var v = getUnitVector(this.pos, player.pos);
+            var d = v*1000;
+
+            var p = engine.actorFactory.createActor("projectile", this.pos, 10, 'art/dfummy.png');
+            p.impulseWithManualTTL(player.pos, 200, 5000);
+            engine.projectiles.push(p);
+            this.lastFired = now;
+        }
+    }
+
+    this.update = function(dt){
+      
+        this.attack();
         return this.needsUpdate;
     }
 

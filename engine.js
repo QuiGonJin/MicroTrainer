@@ -11,7 +11,7 @@ var engine = {
   canvas: null,
   ctx: null,
   lastTime: null,
-  
+  startTime: null,
   actorFactory: null,
   units: [],
   projectiles: [],
@@ -113,7 +113,7 @@ function init(){
       //reset(); << this is where reset should go
       var player = engine.units[0];
       engine.lastTime = Date.now();
-      player.lastFired = Date.now();
+      //player.lastFired = Date.now();
       animFrame( recursiveAnim );
   } else {
       alert("Browser doesn't support requestAnimationFrame");
@@ -125,6 +125,7 @@ function init(){
 
       updateGame(dt);
       engine.lastTime = now;
+      engine.startTime = now;
       //drawGame(dt); Will be called by updateGame if necessary
   };
 }
@@ -196,7 +197,7 @@ function updateGame(dt) {
   if(needsRedraw == true){
     drawGame();
   } else {
-    //console.log("no draw necessary");
+    console.log("no draw necessary");
   }
 }
 
